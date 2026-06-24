@@ -11,7 +11,7 @@ AgentMem 是一个面向智能体推理过程的内存优化 Benchmark 系统。
 ## 安装
 
 ```bash
-cd /home/zb/vllm/agentmem
+cd /home/zb/vllm
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt

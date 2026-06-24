@@ -3,7 +3,7 @@
 ## 安装依赖
 
 ```bash
-cd /home/zb/vllm/agentmem
+cd /home/zb/vllm
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
