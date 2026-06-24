@@ -1,0 +1,6 @@
+id,latency_ms,prompt_tokens,success
+1,120,1800,true
+2,95,1300,true
+3,210,4200,false
+4,88,1100,true
+5,160,2600,true

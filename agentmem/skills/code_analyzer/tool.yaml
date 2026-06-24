@@ -1,0 +1,15 @@
+{
+  "name": "code_analyzer",
+  "category": "local_read",
+  "brief_description": "只读分析 Python 代码结构，统计 class/function/import/TODO。",
+  "full_description": "只分析当前项目目录内的 Python 文件，不执行代码；无路径时生成模拟代码分析。",
+  "input_schema": {"type": "text", "fields": ["request", "optional_python_path"]},
+  "output_schema": {"type": "text", "fields": ["code_metrics", "issues"]},
+  "permission_level": "read_only",
+  "timeout_seconds": 5,
+  "max_output_chars": 30000,
+  "cacheable": true,
+  "enabled": true,
+  "tags": ["code", "python", "analysis"],
+  "priority": 75
+}

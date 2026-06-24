@@ -1,0 +1,15 @@
+{
+  "name": "log_analyzer",
+  "category": "diagnostics",
+  "brief_description": "分析大段日志，提取 OOM、timeout、KV cache 等关键错误。",
+  "full_description": "用于安全分析本地或模拟日志，不联网，不执行命令，输出可被 ToolResultStore 外置和摘要。",
+  "input_schema": {"type": "text", "fields": ["request", "optional_log_path"]},
+  "output_schema": {"type": "text", "fields": ["raw_log", "diagnostic_summary"]},
+  "permission_level": "read_only",
+  "timeout_seconds": 5,
+  "max_output_chars": 60000,
+  "cacheable": true,
+  "enabled": true,
+  "tags": ["log", "diagnostics", "gpu", "kv-cache"],
+  "priority": 95
+}

@@ -1,0 +1,15 @@
+{
+  "name": "calculator",
+  "category": "compute",
+  "brief_description": "安全计算基本四则运算表达式。",
+  "full_description": "基于 Python ast 白名单解析，只支持数字、括号、加减乘除和一元负号。",
+  "input_schema": {"type": "text", "fields": ["expression"]},
+  "output_schema": {"type": "text", "fields": ["result"]},
+  "permission_level": "compute_only",
+  "timeout_seconds": 2,
+  "max_output_chars": 2000,
+  "cacheable": true,
+  "enabled": true,
+  "tags": ["math", "compute"],
+  "priority": 70
+}

@@ -8,6 +8,9 @@ venv/
 
 # benchmark 运行产物
 benchmarks/results/
+agentmem/results/
+agentmem/web/node_modules/
+agentmem/web/dist/
 
 # 本地环境配置
 .env

@@ -1,0 +1,4 @@
+AgentMem 是一个位于轻量 Agent Runtime 与 vLLM OpenAI-compatible API 之间的内存管理实验项目。
+它不修改 vLLM CUDA 内核，也不直接管理底层 KV Cache block。
+第一版重点优化 Agent 层 prompt 组织：工具说明按需加载、工具结果外置、历史摘要和稳定前缀。
+这份 fixture 用于 file_reader 安全读取测试。

@@ -1,0 +1,15 @@
+{
+  "name": "repo_scanner",
+  "category": "local_read",
+  "brief_description": "扫描当前项目目录结构，忽略大目录和缓存目录。",
+  "full_description": "只扫描当前项目，输出目录树摘要和关键文件列表，不读取大文件全文。",
+  "input_schema": {"type": "text", "fields": ["request"]},
+  "output_schema": {"type": "text", "fields": ["tree_summary", "key_files"]},
+  "permission_level": "read_only",
+  "timeout_seconds": 5,
+  "max_output_chars": 30000,
+  "cacheable": true,
+  "enabled": true,
+  "tags": ["repo", "scan", "structure"],
+  "priority": 65
+}

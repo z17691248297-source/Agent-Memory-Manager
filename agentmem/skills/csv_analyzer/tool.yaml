@@ -1,0 +1,15 @@
+{
+  "name": "csv_analyzer",
+  "category": "local_read",
+  "brief_description": "分析受控 fixtures 目录中的 CSV，输出行列和数值列统计。",
+  "full_description": "只读取 benchmarks/fixtures 下的 CSV；无路径时生成模拟 CSV 分析结果。",
+  "input_schema": {"type": "text", "fields": ["request", "optional_csv_path"]},
+  "output_schema": {"type": "text", "fields": ["shape", "columns", "numeric_stats"]},
+  "permission_level": "read_only",
+  "timeout_seconds": 5,
+  "max_output_chars": 20000,
+  "cacheable": true,
+  "enabled": true,
+  "tags": ["csv", "table", "stats"],
+  "priority": 85
+}

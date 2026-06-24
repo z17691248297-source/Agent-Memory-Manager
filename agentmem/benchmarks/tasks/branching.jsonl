@@ -1,0 +1,1 @@
+{"task_id": "branching_agentmem_tradeoff", "scenario": "branching", "input": "请给出多个 AgentMem 内存优化方案，并分别比较优点、风险和适配场景。", "stage": "branching", "branch_counts": [2, 4, 8], "min_branch_count": 2, "expect_answer": true, "branch_keywords": ["方案", "优点", "风险"]}

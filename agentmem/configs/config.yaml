@@ -1,0 +1,36 @@
+llm:
+  backend: mock
+  model: Qwen/Qwen2.5-7B-Instruct
+  base_url: http://localhost:8000/v1
+  api_key: EMPTY
+  api_key_env: AGENTMEM_API_KEY
+  temperature: 0.2
+  max_tokens: 512
+  timeout: 120
+
+vllm:
+  metrics_url: http://localhost:8000/metrics
+  enable_prefix_caching: true
+
+memory:
+  recent_rounds: 6
+  enable_tool_externalization: true
+  enable_skill_lazy_loading: true
+  enable_history_summary: true
+  enable_branch_sharing: true
+  enable_stable_prefix: true
+
+tools:
+  enabled:
+    - log_analyzer
+    - file_reader
+    - calculator
+    - code_analyzer
+    - csv_analyzer
+    - repo_scanner
+  max_selected_tools: 2
+  max_output_chars: 20000
+
+benchmark:
+  output_dir: results
+  repeat: 1

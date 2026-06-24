@@ -1,0 +1,4 @@
+{"input": "请给出 3 个不同内存优化方案，并分别评估优缺点。", "stage": "branching"}
+{"input": "分支 A：优先优化工具结果外置。", "stage": "branching"}
+{"input": "分支 B：优先优化历史摘要。", "stage": "branching"}
+{"input": "分支 C：优先优化 prefix 稳定性。", "stage": "branching"}

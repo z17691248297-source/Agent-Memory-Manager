@@ -1,0 +1,6 @@
+{"input": "请分析这段日志，找出是否存在 CUDA OOM 或 KV cache 分配失败。", "stage": "tool_calling", "expected_tools": ["log_analyzer"]}
+{"input": "请读取这个文件并总结主要内容。", "stage": "tool_calling", "expected_tools": ["file_reader"]}
+{"input": "请分析代码结构，找出可能的问题。", "stage": "tool_calling", "expected_tools": ["code_analyzer"]}
+{"input": "请分析这个表格，给出列统计信息。", "stage": "tool_calling", "expected_tools": ["csv_analyzer"]}
+{"input": "请扫描当前项目结构，说明主要模块。", "stage": "tool_calling", "expected_tools": ["repo_scanner"]}
+{"input": "请计算 (128 * 32 + 256) / 8。", "stage": "tool_calling", "expected_tools": ["calculator"]}

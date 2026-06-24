@@ -1,0 +1,15 @@
+{
+  "name": "file_reader",
+  "category": "local_read",
+  "brief_description": "读取受控目录中的文本文件，或生成模拟大文件内容。",
+  "full_description": "只允许读取 benchmarks/fixtures 或 examples 下的文件，禁止访问系统敏感路径。",
+  "input_schema": {"type": "text", "fields": ["request", "optional_file_path"]},
+  "output_schema": {"type": "text", "fields": ["file_content"]},
+  "permission_level": "read_only",
+  "timeout_seconds": 5,
+  "max_output_chars": 50000,
+  "cacheable": true,
+  "enabled": true,
+  "tags": ["file", "read", "context"],
+  "priority": 80
+}
