@@ -11,14 +11,15 @@ pip install -r requirements.txt
 
 ## 配置文件
 
-主配置文件是 `configs/config.yaml`。默认 backend 是 `mock`：
+主配置文件是 `configs/config.yaml`。默认 backend 是项目组提供的远程 `vllm`：
 
 ```yaml
 llm:
-  backend: mock
-  model: Qwen/Qwen2.5-7B-Instruct
-  base_url: http://localhost:8000/v1
-  temperature: 0.2
+  backend: vllm
+  model: /home/vip/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28
+  base_url: http://47.108.145.21/v1
+  api_key: EMPTY
+  temperature: 0
   max_tokens: 512
   timeout: 120
 ```
@@ -57,15 +58,10 @@ bash scripts/run_all.sh
 
 ## vLLM 运行
 
-启动本地 vLLM：
-
-```bash
-vllm serve Qwen/Qwen2.5-7B-Instruct --enable-prefix-caching --host 0.0.0.0 --port 8000
-```
-
 运行 benchmark：
 
 ```bash
+python -m agentmem run "用一句话解释 KV Cache。"
 python -m agentmem benchmark --scenario prefix-cache --backend vllm
 python -m agentmem benchmark --scenario tool-heavy --backend vllm
 python -m agentmem report

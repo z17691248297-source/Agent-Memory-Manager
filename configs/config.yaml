@@ -1,15 +1,15 @@
 llm:
-  backend: mock
-  model: Qwen/Qwen2.5-7B-Instruct
-  base_url: http://localhost:8000/v1
+  backend: vllm
+  model: /home/vip/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28
+  base_url: http://47.108.145.21/v1
   api_key: EMPTY
   api_key_env: AGENTMEM_API_KEY
-  temperature: 0.2
+  temperature: 0
   max_tokens: 512
   timeout: 120
 
 vllm:
-  metrics_url: http://localhost:8000/metrics
+  metrics_url: http://47.108.145.21/metrics
   enable_prefix_caching: true
 
 memory:

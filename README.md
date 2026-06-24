@@ -17,7 +17,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-默认配置使用 mock backend，不需要 GPU 或模型服务。
+默认配置使用项目组提供的远程 vLLM OpenAI-compatible API。离线 smoke test 可以在命令里加 `--backend mock`。
 
 ## 常用命令
 
@@ -100,32 +100,23 @@ bash scripts/run_all.sh
 
 ## vLLM 模式
 
-先启动本地 vLLM OpenAI-compatible 服务，例如：
-
-```bash
-vllm serve Qwen/Qwen2.5-7B-Instruct --enable-prefix-caching --host 0.0.0.0 --port 8000
-```
-
-确认 `configs/config.yaml`：
+当前项目组 vLLM API 已写入 `configs/config.yaml`：
 
 ```yaml
 llm:
   backend: vllm
-  model: Qwen/Qwen2.5-7B-Instruct
-  base_url: http://localhost:8000/v1
+  model: /home/vip/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28
+  base_url: http://47.108.145.21/v1
   api_key: EMPTY
-  temperature: 0.2
+  temperature: 0
   max_tokens: 512
   timeout: 120
-
-vllm:
-  metrics_url: http://localhost:8000/metrics
-  enable_prefix_caching: true
 ```
 
 运行：
 
 ```bash
+python -m agentmem run "用一句话解释 KV Cache。"
 python -m agentmem benchmark --scenario prefix-cache --backend vllm
 python -m agentmem report
 ```

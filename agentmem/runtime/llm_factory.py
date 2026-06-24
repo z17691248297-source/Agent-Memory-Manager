@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,11 @@ def load_runtime_config(config_path: str | Path | None = None) -> dict[str, Any]
         data = yaml.safe_load(text) or {}
         return dict(data)
     except Exception:
+        try:
+            data = json.loads(text)
+            return dict(data) if isinstance(data, dict) else {}
+        except json.JSONDecodeError:
+            pass
         return _parse_simple_yaml(text)
 
 
