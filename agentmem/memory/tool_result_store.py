@@ -3,11 +3,11 @@ from __future__ import annotations
 import csv
 import json
 import re
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 from agentmem.memory.memory_object import estimate_tokens
+from agentmem.tools.log_summary import format_log_summary, log_signature, matched_keywords
 from agentmem.tools.result import ToolResult
 
 
@@ -18,23 +18,39 @@ class ToolResultStore:
         self,
         root_dir: str | Path = "results/tool_store",
         chunk_chars: int = 4000,
+        raw_store_max_mb: float | None = None,
     ) -> None:
         self.root_dir = Path(root_dir)
         self.raw_dir = self.root_dir / "raw"
         self.index_dir = self.root_dir / "index"
         self.chunk_dir = self.root_dir / "chunks"
         self.chunk_chars = chunk_chars
+        self.raw_store_max_mb = raw_store_max_mb
         self.raw_dir.mkdir(parents=True, exist_ok=True)
         self.index_dir.mkdir(parents=True, exist_ok=True)
         self.chunk_dir.mkdir(parents=True, exist_ok=True)
 
     def save(self, tool_result: ToolResult) -> ToolResult:
         raw_path = self.raw_dir / f"{tool_result.result_id}.txt"
-        raw_path.write_text(tool_result.raw_result, encoding="utf-8")
+        raw_text, raw_truncated = self._raw_for_storage(tool_result.raw_result)
+        raw_path.write_text(raw_text, encoding="utf-8")
 
-        chunks = self._write_chunks(tool_result.result_id, tool_result.raw_result)
+        chunks = self._write_chunks(tool_result.result_id, raw_text)
         tool_result.raw_path = str(raw_path)
         tool_result.chunks = chunks
+        tool_result.raw_token_len = estimate_tokens(raw_text)
+        tool_result.artifacts = [
+            {
+                "result_id": tool_result.result_id,
+                "tool_name": tool_result.tool_name,
+                "artifact_type": _artifact_type(tool_result.tool_name),
+                "path": str(raw_path),
+                "token_count": tool_result.raw_token_len,
+                "description": tool_result.summary,
+            }
+        ]
+        tool_result.metadata["raw_store_truncated"] = raw_truncated
+        tool_result.metadata["raw_store_max_mb"] = self.raw_store_max_mb
         tool_result.metadata["tool_compression_ratio"] = tool_result.compression_ratio
 
         index_path = self.index_dir / f"{tool_result.result_id}.json"
@@ -98,30 +114,57 @@ class ToolResultStore:
         chunks: list[dict[str, Any]] = []
         if not content:
             return chunks
+        line_offsets = _line_offsets(content)
         for idx, start in enumerate(range(0, len(content), self.chunk_chars)):
-            chunk_text = content[start : start + self.chunk_chars]
+            end = min(len(content), start + self.chunk_chars)
+            chunk_text = content[start:end]
             path = self.chunk_dir / f"{result_id}_chunk_{idx}.txt"
             path.write_text(chunk_text, encoding="utf-8")
+            start_line = _line_for_offset(line_offsets, start)
+            end_line = _line_for_offset(line_offsets, max(start, end - 1))
+            tags = matched_keywords(chunk_text)
+            signatures = _chunk_error_signatures(chunk_text)
             chunks.append(
                 {
                     "chunk_id": idx,
+                    "result_id": result_id,
                     "path": str(path),
+                    "start_line": start_line,
+                    "end_line": end_line,
                     "char_len": len(chunk_text),
+                    "token_count": estimate_tokens(chunk_text),
                     "token_len": estimate_tokens(chunk_text),
+                    "tags": tags,
+                    "signatures": signatures,
+                    "summary": _chunk_summary(chunk_text, tags, signatures),
                 }
             )
         return chunks
 
+    def _raw_for_storage(self, raw_result: str) -> tuple[str, bool]:
+        if self.raw_store_max_mb is None or self.raw_store_max_mb <= 0:
+            return raw_result, False
+        max_bytes = int(self.raw_store_max_mb * 1024 * 1024)
+        encoded = raw_result.encode("utf-8")
+        if len(encoded) <= max_bytes:
+            return raw_result, False
+        return encoded[:max_bytes].decode("utf-8", errors="ignore"), True
 
-def _summarize_log(text: str, max_lines: int = 20) -> str:
-    keywords = ["ERROR", "WARN", "OOM", "timeout", "failed", "exception", "KV cache"]
-    lines = [
-        line
-        for line in text.splitlines()
-        if any(keyword.lower() in line.lower() for keyword in keywords)
-    ]
-    selected = lines[:max_lines] or text.splitlines()[:8]
-    return "\n".join(["日志摘要:", *selected, f"原始行数: {len(text.splitlines())}"])
+
+def _summarize_log(text: str) -> str:
+    return format_log_summary(text)
+
+
+def _artifact_type(tool_name: str) -> str:
+    mapping = {
+        "log_analyzer": "log",
+        "csv_analyzer": "table",
+        "code_analyzer": "code",
+        "repo_scanner": "text",
+        "file_reader": "text",
+        "calculator": "text",
+    }
+    return mapping.get(tool_name, "text")
 
 
 def _summarize_file(text: str, max_lines: int = 12) -> str:
@@ -179,3 +222,46 @@ def _preview_keyword(text: str, keyword: str, context_chars: int = 160) -> str:
     end = min(len(text), index + context_chars // 2)
     return text[start:end]
 
+
+def _line_offsets(text: str) -> list[int]:
+    offsets = [0]
+    for index, char in enumerate(text):
+        if char == "\n":
+            offsets.append(index + 1)
+    return offsets
+
+
+def _line_for_offset(offsets: list[int], offset: int) -> int:
+    line = 1
+    for idx, start in enumerate(offsets, start=1):
+        if start > offset:
+            break
+        line = idx
+    return line
+
+
+def _chunk_error_signatures(text: str) -> list[str]:
+    signatures: list[str] = []
+    for line in text.splitlines():
+        keywords = matched_keywords(line)
+        if keywords:
+            signature = log_signature(line, keywords)
+            if signature not in signatures:
+                signatures.append(signature)
+        if len(signatures) >= 8:
+            break
+    return signatures
+
+
+def _chunk_summary(text: str, tags: list[str], signatures: list[str]) -> str:
+    if tags or signatures:
+        return json.dumps(
+            {
+                "tags": tags,
+                "signatures": signatures[:5],
+                "line_count": len(text.splitlines()),
+                "token_count": estimate_tokens(text),
+            },
+            ensure_ascii=False,
+        )
+    return _summarize_generic(text, max_chars=240)

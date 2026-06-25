@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import time
 
 from agentmem.memory.memory_object import estimate_tokens
@@ -42,9 +43,15 @@ class MockLLMClient:
             content = "已完成计算任务。"
         else:
             content = "已根据当前上下文生成简要回答。"
-        completion_tokens = estimate_tokens(content)
+        payload = {
+            "assistant_response": content,
+            "next_action": None,
+            "memory_delta": _memory_delta(prompt, content),
+        }
+        output = json.dumps(payload, ensure_ascii=False)
+        completion_tokens = estimate_tokens(output)
         return {
-            "content": content,
+            "content": output,
             "latency": time.perf_counter() - start,
             "ttft": 0.0,
             "prompt_tokens": prompt_tokens,
@@ -52,3 +59,67 @@ class MockLLMClient:
             "total_tokens": prompt_tokens + completion_tokens,
             "tokens_per_second": -1,
         }
+
+
+def _memory_delta(prompt: str, content: str) -> dict:
+    facts = []
+    lower = prompt.lower()
+    for token in _interesting_phrases(prompt):
+        facts.append({"content": token, "source": "mock_llm", "confidence": 0.8, "importance": 0.7})
+    if "result_id" in lower or "tool" in lower or "工具" in prompt:
+        facts.append({"content": "工具结果应通过 result_id 和 artifact reference 管理", "source": "mock_llm", "confidence": 0.8, "importance": 0.7})
+    decisions = []
+    if any(word in content for word in ["结论", "建议", "必须"]):
+        decisions.append({"content": content[:240], "reason": "assistant response", "confidence": 0.75, "source": "mock_llm"})
+    return {
+        "goals": _goals(prompt),
+        "constraints": _constraints(prompt),
+        "facts": facts[:12],
+        "decisions": decisions,
+        "open_questions": [],
+        "todos": [],
+        "artifact_refs": [],
+        "tool_summaries": [],
+        "warnings": [],
+    }
+
+
+def _goals(prompt: str) -> list[str]:
+    lines = [line.strip() for line in prompt.splitlines() if line.strip()]
+    return [line[:240] for line in lines if any(marker in line for marker in ["目标", "请分析", "请判断", "最后给出"])][:3]
+
+
+def _constraints(prompt: str) -> list[str]:
+    lines = [line.strip() for line in prompt.splitlines() if line.strip()]
+    return [line[:240] for line in lines if any(marker in line for marker in ["必须", "要求", "关注", "保留", "覆盖", "记录"])][:8]
+
+
+def _interesting_phrases(prompt: str) -> list[str]:
+    phrases = []
+    candidates = [
+        "AgentMem",
+        "Event-Sourced Memory",
+        "工具结果外置",
+        "result_id",
+        "artifact",
+        "历史摘要",
+        "stable prefix",
+        "benchmark",
+        "vLLM",
+        "Qwen",
+        "MiniCPM",
+        "baseline",
+        "optimized",
+        "prompt_tokens",
+        "CUDA OOM",
+        "OOM",
+        "timeout",
+        "KV cache",
+        "success rate",
+        "任务成功率",
+    ]
+    lower = prompt.lower()
+    for candidate in candidates:
+        if candidate.lower() in lower:
+            phrases.append(candidate)
+    return phrases

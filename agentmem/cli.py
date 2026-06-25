@@ -102,7 +102,18 @@ def build_parser() -> argparse.ArgumentParser:
         default="all",
     )
     benchmark.add_argument("--all", action="store_true", help="run every benchmark scenario")
-    benchmark.add_argument("--mode", choices=["baseline", "optimized", "both"], default="both")
+    benchmark.add_argument(
+        "--mode",
+        choices=[
+            "baseline",
+            "optimized",
+            "both",
+            "full_history",
+            "summary_memory",
+            "event_sourced_memory",
+        ],
+        default="both",
+    )
     benchmark.add_argument(
         "--backend",
         choices=["mock", "vllm", "openai_compatible", "openai-compatible", "openai"],

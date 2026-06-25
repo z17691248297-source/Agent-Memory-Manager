@@ -12,11 +12,12 @@ def test_cli_benchmark_multi_stage_generates_success_and_score(tmp_path, monkeyp
     code = main(["benchmark", "--scenario", "multi-stage", "--backend", "mock", "--output", str(results)])
 
     assert code == 0
-    rows = list(csv.DictReader((results / "multi_stage_optimized.csv").open(encoding="utf-8")))
+    rows = list(csv.DictReader((results / "multi_stage_event_sourced_memory.csv").open(encoding="utf-8")))
     assert [row["stage"] for row in rows] == ["planning", "tool_calling", "reflection", "final_answer"]
     assert all(row["success"] == "True" for row in rows)
     assert all(float(row["score"]) == 1.0 for row in rows)
     assert rows[-1]["completed_stages"] == "planning,tool_calling,reflection,final_answer"
+    assert rows[-1]["memory_mode"] == "event_sourced_memory"
 
 
 def test_cli_benchmark_prefix_cache_and_ablation_have_scores(tmp_path, monkeypatch) -> None:
@@ -45,8 +46,9 @@ def test_cli_benchmark_all_includes_multi_stage(tmp_path, monkeypatch) -> None:
     code = main(["benchmark", "--all", "--backend", "mock", "--output", str(results)])
 
     assert code == 0
-    assert (results / "multi_stage_baseline.csv").exists()
-    assert (results / "multi_stage_optimized.csv").exists()
+    assert (results / "multi_stage_full_history.csv").exists()
+    assert (results / "multi_stage_summary_memory.csv").exists()
+    assert (results / "multi_stage_event_sourced_memory.csv").exists()
     report = (results / "report.md").read_text(encoding="utf-8")
     assert "## 8. Multi-stage 结果" in report
     assert "Success / Score" in report

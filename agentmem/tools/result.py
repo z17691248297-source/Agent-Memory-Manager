@@ -18,6 +18,7 @@ class ToolResult:
     latency: float
     error: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    artifacts: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self, include_raw: bool = True) -> dict[str, Any]:
         data = asdict(self)
@@ -30,4 +31,3 @@ class ToolResult:
         if self.raw_token_len <= 0:
             return 1.0
         return self.summary_token_len / self.raw_token_len
-

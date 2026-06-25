@@ -58,9 +58,7 @@ class ToolExecutor:
             status = "failed"
             error = str(exc)
 
-        if raw_result and len(raw_result) > spec.max_output_chars:
-            raw_result = raw_result[: spec.max_output_chars] + "\n[工具输出已被 ToolExecutor 截断]"
-            status = "truncated"
+        display_truncated = bool(raw_result and len(raw_result) > spec.max_output_chars)
 
         summary = self.result_store.summarize(raw_result, tool_name)
         result = ToolResult(
@@ -79,6 +77,8 @@ class ToolExecutor:
                 "permission_level": spec.permission_level,
                 "cache_hit": False,
                 "input_hash": sha256(input_text.encode("utf-8")).hexdigest(),
+                "display_truncated": display_truncated,
+                "display_max_output_chars": spec.max_output_chars,
             },
         )
         saved = self.result_store.save(result)
@@ -106,4 +106,3 @@ class ToolExecutor:
     def _cache_key(self, tool_name: str, input_text: str, context: dict | None) -> str:
         payload = f"{tool_name}\n{input_text}\n{context or {}}"
         return sha256(payload.encode("utf-8")).hexdigest()
-

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from agentmem.memory.context_compressor import ContextCompressor
+from agentmem.memory.display import prompt_display_text, prompt_display_tokens
 from agentmem.memory.memory_object import estimate_tokens
 from agentmem.memory.tool_result_store import ToolResultStore
 from agentmem.tools.registry import ToolRegistry
@@ -106,7 +107,11 @@ class OptimizedMemory:
 
     def latest_metrics_hint(self) -> dict:
         raw_tool_tokens = sum(result.raw_token_len for result in self.tool_results)
-        injected = sum(result.summary_token_len for result in self.tool_results) if self.enable_tool_externalization else raw_tool_tokens
+        injected = (
+            sum(result.summary_token_len for result in self.tool_results)
+            if self.enable_tool_externalization
+            else sum(prompt_display_tokens(result, estimate_tokens) for result in self.tool_results)
+        )
         ratios = [result.compression_ratio for result in self.tool_results if result.raw_token_len > 0]
         return {
             **self.last_token_breakdown,
@@ -119,7 +124,7 @@ class OptimizedMemory:
 
     def _tool_prompt_record(self, result: ToolResult) -> str:
         if not self.enable_tool_externalization:
-            return result.raw_result
+            return prompt_display_text(result)
         return "\n".join(
             [
                 f"tool_name: {result.tool_name}",

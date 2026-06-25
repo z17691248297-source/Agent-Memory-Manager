@@ -10,9 +10,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from agentmem.event_memory.integration import EventSourcedMemoryAdapter
 from agentmem.evaluation import evaluate_metric_checks, evaluate_task, evaluation_fields
 from agentmem.memory.baseline_memory import BaselineMemory
 from agentmem.memory.branch_manager import BranchManager
+from agentmem.memory.display import prompt_display_text, prompt_display_tokens
 from agentmem.memory.memory_object import estimate_tokens, hash_text
 from agentmem.memory.optimized_memory import OptimizedMemory
 from agentmem.memory.tool_result_store import ToolResultStore
@@ -27,7 +29,8 @@ from agentmem.tools.tool_registry import build_default_registry
 
 
 SCENARIOS = {"tool-heavy", "long-session", "multi-stage", "branching", "prefix-cache", "ablation", "all"}
-MODES = {"baseline", "optimized", "both"}
+LONG_MULTI_MEMORY_MODES = ["full_history", "summary_memory", "event_sourced_memory"]
+MODES = {"baseline", "optimized", "both", *LONG_MULTI_MEMORY_MODES}
 TASK_DIR = PROJECT_ROOT / "benchmarks" / "tasks"
 TASK_FILES = {
     "tool-heavy": "tool_heavy.jsonl",
@@ -41,6 +44,7 @@ COMMON_FIELDS = [
     "task_id",
     "workload_file",
     "mode",
+    "memory_mode",
     "backend",
     "round",
     "stage",
@@ -71,9 +75,21 @@ LONG_SESSION_FIELDS = [
     *COMMON_FIELDS,
     "session_id",
     "history_tokens",
+    "full_history_tokens",
     "summary_tokens",
+    "state_view_tokens",
+    "event_count",
+    "memory_delta_count",
+    "fact_count",
+    "decision_count",
+    "artifact_ref_count",
+    "snapshot_count",
     "recent_turns",
     "tool_names",
+    "early_fact_retention",
+    "initial_score",
+    "final_score",
+    "missing_keywords",
 ]
 
 MULTI_STAGE_FIELDS = [
@@ -86,7 +102,19 @@ MULTI_STAGE_FIELDS = [
     "injected_tool_tokens",
     "tool_compression_ratio",
     "history_tokens",
+    "full_history_tokens",
     "summary_tokens",
+    "state_view_tokens",
+    "event_count",
+    "memory_delta_count",
+    "fact_count",
+    "decision_count",
+    "artifact_ref_count",
+    "snapshot_count",
+    "early_fact_retention",
+    "initial_score",
+    "final_score",
+    "missing_keywords",
 ]
 
 BRANCHING_FIELDS = [
@@ -237,14 +265,14 @@ def _run_long_session(
     sessions = _group_sequence(tasks, "session_id", "turn")
     paths: list[Path] = []
 
-    for memory_mode in _selected_modes(mode):
-        rows = []
+    for memory_mode in _selected_long_multi_modes(mode):
+        rows: list[dict[str, Any]] = []
         for _ in range(repeat):
             for session_id, session_tasks in sessions.items():
                 agent = _build_benchmark_agent(config_path, output_dir, memory_mode)
                 for turn_index, task in enumerate(session_tasks, start=1):
                     answer, metrics = agent.run(str(task["input"]), stage=str(task.get("stage", "planning")))
-                    result = evaluate_task(task, answer, metrics)
+                    result, answer, metrics = _evaluate_agent_task(agent, task, answer, metrics)
                     row = _row_from_metrics(
                         task=task,
                         workload=workload,
@@ -275,8 +303,8 @@ def _run_multi_stage(
     sessions = _group_sequence(tasks, "session_id", "step")
     paths: list[Path] = []
 
-    for memory_mode in _selected_modes(mode):
-        rows = []
+    for memory_mode in _selected_long_multi_modes(mode):
+        rows: list[dict[str, Any]] = []
         for _ in range(repeat):
             for session_id, session_tasks in sessions.items():
                 agent = _build_benchmark_agent(config_path, output_dir, memory_mode)
@@ -285,7 +313,8 @@ def _run_multi_stage(
                     stage = str(task.get("stage", "planning"))
                     answer, metrics = agent.run(str(task["input"]), stage=stage)
                     completed_stages.append(stage)
-                    result = evaluate_task(
+                    result, answer, metrics = _evaluate_agent_task(
+                        agent,
                         task,
                         answer,
                         metrics,
@@ -418,7 +447,7 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
     memory_config = dict(config.get("memory") or {})
     recent_turns = int(memory_config.get("recent_rounds", 6))
     registry = build_default_registry(PROJECT_ROOT / "skills")
-    store = ToolResultStore(output_dir / "tool_store")
+    store = ToolResultStore(output_dir / "tool_store", raw_store_max_mb=_raw_store_max_mb(config))
     executor = ToolExecutor(registry, store)
     result = executor.execute(
         "log_analyzer",
@@ -439,7 +468,8 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
     full_history = "\n".join(history_messages)
     recent_history = "\n".join(history_messages[-recent_turns:])
     history_summary = "历史摘要: 用户持续讨论 AgentMem 的工具结果外置、长会话压缩、稳定 prefix 和分支共享。"
-    raw_record = result.raw_result
+    raw_record = prompt_display_text(result)
+    raw_record_tokens = prompt_display_tokens(result, estimate_tokens)
     summary_record = "\n".join(
         [
             f"tool_name: {result.tool_name}",
@@ -454,7 +484,7 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
         {
             "variant": "baseline",
             "parts": [SYSTEM_PROMPT, full_tools, full_history, raw_record],
-            "injected_tool_tokens": result.raw_token_len,
+            "injected_tool_tokens": raw_record_tokens,
             "summary_tokens": 0,
             "history_text": full_history,
             "tool_brief_tokens": 0,
@@ -464,7 +494,7 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
         {
             "variant": "stable_prefix_only",
             "parts": [SYSTEM_PROMPT, full_tools, full_history, raw_record],
-            "injected_tool_tokens": result.raw_token_len,
+            "injected_tool_tokens": raw_record_tokens,
             "summary_tokens": 0,
             "history_text": full_history,
             "tool_brief_tokens": 0,
@@ -474,7 +504,7 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
         {
             "variant": "skill_lazy_loading_only",
             "parts": [SYSTEM_PROMPT, tool_briefs, selected_skill, full_history, raw_record],
-            "injected_tool_tokens": result.raw_token_len,
+            "injected_tool_tokens": raw_record_tokens,
             "summary_tokens": 0,
             "history_text": full_history,
             "tool_brief_tokens": estimate_tokens(tool_briefs),
@@ -494,7 +524,7 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
         {
             "variant": "history_summary_only",
             "parts": [SYSTEM_PROMPT, full_tools, history_summary, recent_history, raw_record],
-            "injected_tool_tokens": result.raw_token_len,
+            "injected_tool_tokens": raw_record_tokens,
             "summary_tokens": estimate_tokens(history_summary),
             "history_text": recent_history,
             "tool_brief_tokens": 0,
@@ -565,10 +595,10 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
 def _build_benchmark_agent(config_path: Path, output_dir: Path, memory_mode: str) -> AgentRuntime:
     config = load_runtime_config(config_path)
     registry = build_default_registry(PROJECT_ROOT / "skills")
-    store = ToolResultStore(output_dir / "tool_store")
-    if memory_mode == "baseline":
+    store = ToolResultStore(output_dir / "tool_store", raw_store_max_mb=_raw_store_max_mb(config))
+    if memory_mode in {"baseline", "full_history"}:
         memory = BaselineMemory(system_prompt=SYSTEM_PROMPT, tool_registry=registry)
-    else:
+    elif memory_mode == "summary_memory":
         memory_config = dict(config.get("memory") or {})
         memory = OptimizedMemory(
             system_prompt=SYSTEM_PROMPT,
@@ -579,12 +609,37 @@ def _build_benchmark_agent(config_path: Path, output_dir: Path, memory_mode: str
             enable_skill_lazy_loading=bool(memory_config.get("enable_skill_lazy_loading", True)),
             enable_history_summary=bool(memory_config.get("enable_history_summary", True)),
         )
+    elif memory_mode in {"optimized", "event_sourced_memory"}:
+        memory_config = dict(config.get("memory") or {})
+        memory = EventSourcedMemoryAdapter(
+            system_prompt=SYSTEM_PROMPT,
+            tool_registry=registry,
+            result_store=store,
+            output_dir=output_dir,
+            recent_rounds=int(memory_config.get("recent_rounds", 4)),
+            snapshot_interval=int(memory_config.get("event_snapshot_interval", 10)),
+            max_state_tokens=int(memory_config.get("event_state_view_tokens", 900)),
+            mode=memory_mode,
+        )
+    else:
+        raise ValueError(f"unsupported memory_mode: {memory_mode}")
     return AgentRuntime(
         memory=memory,
         tools=registry,
         llm_client=build_llm_client(config_path),
         tool_executor=ToolExecutor(registry, store),
     )
+
+
+def _raw_store_max_mb(config: dict[str, Any]) -> float | None:
+    value = dict(config.get("tools") or {}).get("raw_store_max_mb", config.get("raw_store_max_mb"))
+    if value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
 
 
 def _branch_row(task: dict[str, Any], workload: Path, branch_count: int, mode: str, backend: str) -> dict[str, Any]:
@@ -738,12 +793,21 @@ def _row_from_metrics(
         "task_id": task["task_id"],
         "workload_file": _relative_path(workload),
         "mode": memory_mode,
+        "memory_mode": memory_mode,
         "backend": backend,
         "round": round_index,
         "stage": task.get("stage", metrics.get("stage", "")),
     }
     row.setdefault("output_tokens", metrics.get("output_tokens", -1))
     row.setdefault("total_tokens", metrics.get("total_tokens", -1))
+    row.setdefault("full_history_tokens", metrics.get("full_history_tokens", metrics.get("history_tokens", -1)))
+    row.setdefault("state_view_tokens", metrics.get("state_view_tokens", 0))
+    row.setdefault("event_count", metrics.get("event_count", 0))
+    row.setdefault("memory_delta_count", metrics.get("memory_delta_count", 0))
+    row.setdefault("fact_count", metrics.get("fact_count", 0))
+    row.setdefault("decision_count", metrics.get("decision_count", 0))
+    row.setdefault("artifact_ref_count", metrics.get("artifact_ref_count", 0))
+    row.setdefault("snapshot_count", metrics.get("snapshot_count", 0))
     return row
 
 
@@ -800,6 +864,44 @@ def _selected_modes(mode: str) -> list[str]:
     if mode == "both":
         return ["baseline", "optimized"]
     return [mode]
+
+
+def _selected_long_multi_modes(mode: str) -> list[str]:
+    if mode == "both":
+        return list(LONG_MULTI_MEMORY_MODES)
+    if mode == "baseline":
+        return ["full_history"]
+    if mode == "optimized":
+        return ["event_sourced_memory"]
+    return [mode]
+
+
+def _evaluate_agent_task(
+    agent: AgentRuntime,
+    task: dict[str, Any],
+    answer: str,
+    metrics: dict[str, Any],
+    context: dict[str, Any] | None = None,
+):
+    eval_context = dict(context or {})
+    eval_context["retention_text"] = _agent_retention_text(agent)
+    result = evaluate_task(task, answer, metrics, context=eval_context)
+    initial_score = result.score
+    metrics["initial_score"] = initial_score
+    metrics["final_score"] = result.score
+    return result, answer, metrics
+
+
+def _agent_retention_text(agent: AgentRuntime) -> str:
+    memory = agent.memory
+    if hasattr(memory, "retention_text"):
+        return str(memory.retention_text())
+    messages = getattr(memory, "messages", [])
+    return "\n".join(str(item.get("content", "")) for item in messages if isinstance(item, dict))
+
+
+def _split_missing_keywords(value: str) -> list[str]:
+    return [part.strip() for part in str(value).split(",") if part.strip()]
 
 
 def _select_fields(row: dict[str, Any], fields: list[str], default: Any = "") -> dict[str, Any]:

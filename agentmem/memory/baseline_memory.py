@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from agentmem.memory.display import prompt_display_text, prompt_display_tokens
 from agentmem.memory.memory_object import estimate_tokens
 from agentmem.tools.registry import ToolRegistry
 from agentmem.tools.result import ToolResult
@@ -30,7 +31,7 @@ class BaselineMemory:
         self.messages.append(
             {
                 "role": "tool",
-                "content": result.raw_result,
+                "content": prompt_display_text(result),
                 "result_id": result.result_id,
                 "tool_name": result.tool_name,
             }
@@ -60,11 +61,12 @@ class BaselineMemory:
 
     def latest_metrics_hint(self) -> dict:
         raw_tool_tokens = sum(result.raw_token_len for result in self.tool_results)
+        injected_tool_tokens = sum(prompt_display_tokens(result, estimate_tokens) for result in self.tool_results)
         return {
             **self.last_token_breakdown,
             "raw_tool_tokens": raw_tool_tokens,
-            "injected_tool_tokens": raw_tool_tokens,
-            "tool_compression_ratio": 1.0,
+            "injected_tool_tokens": injected_tool_tokens,
+            "tool_compression_ratio": (injected_tool_tokens / raw_tool_tokens) if raw_tool_tokens else 1.0,
             "loaded_skill_names": self.loaded_skill_names,
             "loaded_skill_tokens": self.loaded_skill_tokens,
         }

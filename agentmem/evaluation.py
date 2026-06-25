@@ -11,6 +11,8 @@ class EvaluationResult:
     failure_reason: str
     passed_checks: int
     total_checks: int
+    early_fact_retention: float = 1.0
+    missing_keywords: str = ""
 
 
 def evaluate_task(
@@ -38,6 +40,20 @@ def evaluate_task(
     answer_haystack = _normalize("\n".join([answer, str(context.get("answer_extra", ""))]))
     for keyword in task.get("answer_keywords") or []:
         checks.append((f"answer_keyword:{keyword}", _normalize(str(keyword)) in answer_haystack))
+    for keyword in task.get("required_answer_points") or []:
+        checks.append((f"required_answer_point:{keyword}", _normalize(str(keyword)) in answer_haystack))
+
+    fact_haystack = _normalize(
+        "\n".join(
+            [
+                answer,
+                str(context.get("retention_text", "")),
+                " ".join(f"{key}={value}" for key, value in metrics.items()),
+            ]
+        )
+    )
+    for keyword in task.get("required_facts") or []:
+        checks.append((f"required_fact:{keyword}", _normalize(str(keyword)) in fact_haystack))
 
     branch_haystack = _normalize(str(context.get("branch_text", answer)))
     for keyword in task.get("branch_keywords") or []:
@@ -60,6 +76,8 @@ def evaluate_task(
         value = _to_float(metrics.get(metric_name), None)
         checks.append((f"max_metric:{metric_name}", value is not None and value <= float(max_value)))
 
+    retention_score, missing_keywords = _retention_check(task, answer, metrics, context)
+
     if not checks:
         task_id = task.get("task_id", "<unknown>")
         raise ValueError(f"task has no evaluator criteria: {task_id}")
@@ -75,6 +93,8 @@ def evaluate_task(
         failure_reason=";".join(failed),
         passed_checks=passed,
         total_checks=total,
+        early_fact_retention=retention_score,
+        missing_keywords=",".join(missing_keywords),
     )
 
 
@@ -92,6 +112,8 @@ def evaluate_metric_checks(checks: Mapping[str, bool]) -> EvaluationResult:
         failure_reason=";".join(failed),
         passed_checks=passed,
         total_checks=total,
+        early_fact_retention=1.0,
+        missing_keywords="",
     )
 
 
@@ -102,7 +124,74 @@ def evaluation_fields(result: EvaluationResult) -> dict[str, Any]:
         "failure_reason": result.failure_reason,
         "passed_checks": result.passed_checks,
         "total_checks": result.total_checks,
+        "early_fact_retention": result.early_fact_retention,
+        "missing_keywords": result.missing_keywords,
     }
+
+
+def _retention_check(
+    task: Mapping[str, Any],
+    answer: str,
+    metrics: Mapping[str, Any],
+    context: Mapping[str, Any],
+) -> tuple[float, list[str]]:
+    required = task.get("required_facts") or []
+    if required:
+        haystack = _normalize(
+            "\n".join(
+                [
+                    answer,
+                    str(context.get("answer_extra", "")),
+                    str(context.get("retention_text", "")),
+                    " ".join(f"{key}={value}" for key, value in metrics.items()),
+                ]
+            )
+        )
+        return _keyword_score(haystack, [(str(item), [str(item)]) for item in required])
+    scenario = str(task.get("scenario", ""))
+    haystack = _normalize(
+        "\n".join(
+            [
+                answer,
+                str(context.get("answer_extra", "")),
+                str(context.get("retention_text", "")),
+                " ".join(f"{key}={value}" for key, value in metrics.items()),
+            ]
+        )
+    )
+    if scenario == "long-session":
+        checks = [
+            ("AgentMem", ["agentmem"]),
+            ("工具结果外置", ["工具结果外置", "外置工具结果", "tool externalization"]),
+            ("历史摘要", ["历史摘要", "history summary", "summary memory"]),
+            ("stable prefix", ["stable prefix", "稳定 prefix", "stable_prefix"]),
+            ("benchmark", ["benchmark", "workload"]),
+            ("Qwen/MiniCPM/vLLM", ["qwen", "minicpm", "vllm"]),
+        ]
+        return _keyword_score(haystack, checks)
+    if scenario == "multi-stage":
+        checks = [
+            ("baseline", ["baseline"]),
+            ("optimized", ["optimized"]),
+            ("prompt tokens", ["prompt tokens", "prompt_tokens"]),
+            ("tool externalization", ["tool externalization", "工具结果外置", "外置工具结果"]),
+            ("latency/TTFT", ["latency", "ttft"]),
+            ("success/score", ["success", "score", "success rate", "任务成功率"]),
+            ("优化建议", ["优化建议", "建议", "optimized"]),
+        ]
+        return _keyword_score(haystack, checks)
+    return 1.0, []
+
+
+def _keyword_score(haystack: str, checks: list[tuple[str, list[str]]]) -> tuple[float, list[str]]:
+    missing: list[str] = []
+    passed = 0
+    for label, keywords in checks:
+        if any(_normalize(keyword) in haystack for keyword in keywords):
+            passed += 1
+        else:
+            missing.append(label)
+    return round(passed / len(checks), 6) if checks else 1.0, missing
 
 
 def _tool_set(value: Any) -> set[str]:

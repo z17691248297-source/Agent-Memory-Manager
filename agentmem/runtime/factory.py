@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from agentmem.event_memory.integration import EventSourcedMemoryAdapter
 from agentmem.memory.baseline_memory import BaselineMemory
-from agentmem.memory.optimized_memory import OptimizedMemory
 from agentmem.memory.tool_result_store import ToolResultStore
 from agentmem.runtime.agent import AgentRuntime
 from agentmem.runtime.llm_factory import build_llm_client, load_runtime_config
@@ -33,20 +33,21 @@ def build_agent(
     results_root = _resolve_results_dir(root, config, results_dir)
 
     registry = build_default_registry(root / "skills")
-    store = ToolResultStore(results_root / "tool_store")
+    store = ToolResultStore(results_root / "tool_store", raw_store_max_mb=_raw_store_max_mb(config))
     mode = memory_mode.lower()
     if mode == "baseline":
         memory = BaselineMemory(system_prompt=SYSTEM_PROMPT, tool_registry=registry)
     elif mode == "optimized":
         memory_config = dict(config.get("memory") or {})
-        memory = OptimizedMemory(
+        memory = EventSourcedMemoryAdapter(
             system_prompt=SYSTEM_PROMPT,
             tool_registry=registry,
             result_store=store,
-            recent_rounds=int(memory_config.get("recent_rounds", 3)),
-            enable_tool_externalization=bool(memory_config.get("enable_tool_externalization", True)),
-            enable_skill_lazy_loading=bool(memory_config.get("enable_skill_lazy_loading", True)),
-            enable_history_summary=bool(memory_config.get("enable_history_summary", True)),
+            output_dir=results_root,
+            recent_rounds=int(memory_config.get("recent_rounds", 4)),
+            snapshot_interval=int(memory_config.get("event_snapshot_interval", 10)),
+            max_state_tokens=int(memory_config.get("event_state_view_tokens", 900)),
+            mode="optimized",
         )
     else:
         raise ValueError(f"unsupported memory_mode: {memory_mode}")
@@ -69,3 +70,14 @@ def _resolve_results_dir(root: Path, config: dict[str, Any], results_dir: str | 
         path = root / path
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def _raw_store_max_mb(config: dict[str, Any]) -> float | None:
+    value = dict(config.get("tools") or {}).get("raw_store_max_mb", config.get("raw_store_max_mb"))
+    if value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None

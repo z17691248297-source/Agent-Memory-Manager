@@ -35,8 +35,22 @@ def summarize_results(results_dir: str | Path = "results", config_path: str | Pa
 def _load_frames(results: Path) -> dict[str, Rows]:
     return {
         "tool_heavy": _concat_existing(results, ["tool_heavy_baseline.csv", "tool_heavy_optimized.csv"]),
-        "long_session": _concat_existing(results, ["long_session_baseline.csv", "long_session_optimized.csv"]),
-        "multi_stage": _concat_existing(results, ["multi_stage_baseline.csv", "multi_stage_optimized.csv"]),
+        "long_session": _concat_existing(
+            results,
+            [
+                "long_session_full_history.csv",
+                "long_session_summary_memory.csv",
+                "long_session_event_sourced_memory.csv",
+            ],
+        ),
+        "multi_stage": _concat_existing(
+            results,
+            [
+                "multi_stage_full_history.csv",
+                "multi_stage_summary_memory.csv",
+                "multi_stage_event_sourced_memory.csv",
+            ],
+        ),
         "branching": _read_csv(results / "branch_benchmark.csv"),
         "prefix_cache": _concat_existing(results, ["prefix_cache_baseline.csv", "prefix_cache_optimized.csv"]),
         "ablation": _read_csv(results / "ablation.csv"),
@@ -60,6 +74,9 @@ def _summary_fields() -> list[str]:
         "avg_raw_tool_tokens",
         "avg_injected_tool_tokens",
         "avg_tool_compression_ratio",
+        "avg_state_view_tokens",
+        "avg_event_count",
+        "avg_snapshot_count",
         "avg_branch_saving_ratio",
     ]
 
@@ -91,6 +108,9 @@ def _build_summary_rows(results: Path) -> Rows:
                 "avg_raw_tool_tokens": _mean(frame, "raw_tool_tokens"),
                 "avg_injected_tool_tokens": _mean(frame, "injected_tool_tokens"),
                 "avg_tool_compression_ratio": _mean(frame, "tool_compression_ratio"),
+                "avg_state_view_tokens": _mean(frame, "state_view_tokens"),
+                "avg_event_count": _mean(frame, "event_count"),
+                "avg_snapshot_count": _mean(frame, "snapshot_count"),
                 "avg_branch_saving_ratio": _mean(frame, "branch_saving_ratio"),
             }
         )
@@ -104,7 +124,14 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
     backend = _detect_backend(frames, str(llm.get("backend", "mock")))
     scenarios = [name for name, rows in frames.items() if rows]
     all_modes = {str(row.get("mode")) for rows in frames.values() for row in rows if row.get("mode")}
-    modes = sorted(mode for mode in all_modes if mode in {"baseline", "optimized"}) or sorted(all_modes)
+    preferred_modes = {
+        "baseline",
+        "optimized",
+        "full_history",
+        "summary_memory",
+        "event_sourced_memory",
+    }
+    modes = sorted(mode for mode in all_modes if mode in preferred_modes) or sorted(all_modes)
     hardware = collect_hardware_info()
 
     parts = [
@@ -112,7 +139,7 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
         "",
         "## 1. 项目目标",
         "",
-        "AgentMem 是面向智能体推理过程的内存优化 Benchmark 系统，用于复现上下文膨胀问题，并验证 Agent 层内存优化策略是否能降低 prompt tokens、工具注入 tokens、延迟和显存压力。项目不声称修改 vLLM 底层 KV block manager，而是通过稳定 prompt prefix、工具结果外置、skill lazy loading、历史摘要和分支上下文共享，间接降低 vLLM prefill 与 KV Cache 压力。",
+        "AgentMem 是通用轻量 Agent Runtime + Memory Manager，用于让 Agent 通过 memory_delta 主动维护结构化任务状态，并通过 artifact_refs 管理工具结果。Benchmark 只用于评估不同任务场景下的上下文、质量和可追溯性表现；Memory 核心不依赖具体 benchmark 关键词。",
         "",
         "## 2. 实验设置",
         "",
@@ -147,6 +174,10 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
         "该场景覆盖 planning -> tool_calling -> reflection -> final_answer 的多阶段智能体流程。",
         "",
         _multi_stage_section(frames["multi_stage"]),
+        "",
+        "## Event-Sourced Agent Memory",
+        "",
+        _event_memory_section(frames),
         "",
         "## 9. Branching 结果",
         "",
@@ -284,6 +315,10 @@ def _long_session_section(rows: Rows) -> str:
                 "round_50_prompt_tokens": _round_value(sorted_group, 50, "prompt_tokens"),
                 "max_history_tokens": _max(sorted_group, "history_tokens"),
                 "max_summary_tokens": _max(sorted_group, "summary_tokens"),
+                "max_state_view_tokens": _max(sorted_group, "state_view_tokens"),
+                "avg_event_count": _mean(sorted_group, "event_count"),
+                "max_snapshot_count": _max(sorted_group, "snapshot_count"),
+                "early_fact_retention": _mean(sorted_group, "early_fact_retention"),
                 "success_rate": _success_rate(sorted_group),
                 "avg_score": _mean(sorted_group, "score"),
             }
@@ -298,15 +333,82 @@ def _multi_stage_section(rows: Rows) -> str:
         return "暂无 multi-stage 数据。"
     grouped = _group(rows, ["mode", "stage"], {
         "prompt_tokens": "mean",
+        "state_view_tokens": "mean",
+        "event_count": "mean",
+        "snapshot_count": "mean",
         "raw_tool_tokens": "mean",
         "injected_tool_tokens": "mean",
         "latency": "mean",
+        "early_fact_retention": "mean",
         "score": "mean",
     })
     for row in grouped:
         stage_rows = [item for item in rows if item.get("mode") == row.get("mode") and item.get("stage") == row.get("stage")]
         row["success_rate"] = _success_rate(stage_rows)
     return _markdown_table(grouped, list(grouped[0].keys()) if grouped else [])
+
+
+def _event_memory_section(frames: dict[str, Rows]) -> str:
+    rows: Rows = []
+    for scenario, frame_key in [("long-session", "long_session"), ("multi-stage", "multi_stage")]:
+        for mode, group in _group_by(frames.get(frame_key, []), ["mode"]).items():
+            if mode[0] not in {
+                "baseline",
+                "optimized",
+                "full_history",
+                "summary_memory",
+                "event_sourced_memory",
+            }:
+                continue
+            rows.append(
+                {
+                    "scenario": scenario,
+                    "memory_mode": mode[0],
+                    "prompt_tokens": _mean(group, "prompt_tokens"),
+                    "state_view_tokens": _mean(group, "state_view_tokens"),
+                    "success_rate": _success_rate(group),
+                    "score": _mean(group, "score"),
+                    "early_fact_retention": _mean(group, "early_fact_retention"),
+                    "snapshot_count": _mean(group, "snapshot_count"),
+                    "memory_delta_count": _mean(group, "memory_delta_count"),
+                    "fact_count": _mean(group, "fact_count"),
+                    "artifact_ref_count": _mean(group, "artifact_ref_count"),
+                }
+            )
+    if not rows:
+        return "暂无 event-sourced memory 数据。"
+
+    long_rows = frames.get("long_session", [])
+    multi_rows = frames.get("multi_stage", [])
+    combined = [*long_rows, *multi_rows]
+    token_reduction = _mode_reduction_between(combined, "full_history", "event_sourced_memory", "prompt_tokens")
+    retention_delta = _mode_delta(combined, "summary_memory", "event_sourced_memory", "early_fact_retention")
+    conclusions = [
+        "方法说明：Event Log 记录 Agent 执行事件；模型在同一次响应中输出 memory_delta；Memory Manager 将 goals、constraints、facts、decisions、todos 和 artifact_refs 合并为 Task State View；Renderer 只渲染状态视图、artifact metadata 和最近上下文。",
+        "对比口径：full_history 注入完整历史和工具结果；summary_memory 使用工具外置和历史摘要；event_sourced_memory 使用模型产生的 memory_delta、artifact_refs 和 Task State View。Benchmark evaluator 可以按任务检查 required_facts，但 Memory 核心不写死任务关键词。",
+        _markdown_table(
+            rows,
+            [
+                "scenario",
+                "memory_mode",
+                "prompt_tokens",
+                "state_view_tokens",
+                "success_rate",
+                "score",
+                "early_fact_retention",
+                "snapshot_count",
+                "memory_delta_count",
+                "fact_count",
+                "artifact_ref_count",
+            ],
+        ),
+    ]
+    if token_reduction is not None:
+        conclusions.append(f"结论：event_sourced_memory 相比 full_history 平均 prompt_tokens 降低约 {token_reduction:.2f}%。")
+    if retention_delta is not None:
+        direction = "更高" if retention_delta >= 0 else "更低"
+        conclusions.append(f"早期事实保留：event_sourced_memory 相比 summary_memory 平均 early_fact_retention {direction} {abs(retention_delta):.4f}。")
+    return "\n\n".join(conclusions)
 
 
 def _branching_section(rows: Rows) -> str:
@@ -537,6 +639,24 @@ def _mode_reduction(rows: Rows, column: str) -> float | None:
     if baseline <= 0:
         return None
     return (baseline - optimized) / baseline * 100
+
+
+def _mode_reduction_between(rows: Rows, baseline_mode: str, optimized_mode: str, column: str) -> float | None:
+    means = {key[0]: _mean(group, column) for key, group in _group_by(rows, ["mode"]).items()}
+    if baseline_mode not in means or optimized_mode not in means:
+        return None
+    baseline = means[baseline_mode]
+    optimized = means[optimized_mode]
+    if baseline <= 0:
+        return None
+    return (baseline - optimized) / baseline * 100
+
+
+def _mode_delta(rows: Rows, baseline_mode: str, target_mode: str, column: str) -> float | None:
+    means = {key[0]: _mean(group, column) for key, group in _group_by(rows, ["mode"]).items()}
+    if baseline_mode not in means or target_mode not in means:
+        return None
+    return means[target_mode] - means[baseline_mode]
 
 
 def _markdown_table(rows: Rows, columns: list[str]) -> str:
