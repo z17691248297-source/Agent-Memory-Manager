@@ -8,11 +8,13 @@ mkdir -p "${RESULTS_DIR}"
 find "${RESULTS_DIR}" -type f \( \
   -name "*.csv" -o \
   -name "*.json" -o \
+  -name "*.jsonl" -o \
   \( -name "*.md" ! -name "audit_report.md" \) -o \
   -path "*/tool_store/raw/*.txt" -o \
   -path "*/tool_store/chunks/*.txt" \
 \) -delete
 rm -rf "${RESULTS_DIR}/tool_store"
+rm -rf "${RESULTS_DIR}/event_log" "${RESULTS_DIR}/event_memory_snapshots"
 
 mkdir -p "${RESULTS_DIR}/tool_store/raw" "${RESULTS_DIR}/tool_store/index" "${RESULTS_DIR}/tool_store/chunks"
 echo "results cleaned: ${RESULTS_DIR}"

@@ -1,116 +1,166 @@
 # AgentMem Design
 
-AgentMem 定位为面向智能体推理的内存优化 Benchmark 系统。系统只实现 Agent 上下文层的内存管理，不修改 vLLM CUDA kernel，也不声称实现底层 KV block sharing。
+AgentMem 是通用轻量 Agent Runtime + Memory Manager。它用于复现和评估智能体工作流中的上下文膨胀问题，不是完整 AutoGPT，也不是通用 Web Agent，不修改 vLLM kernel。
 
-## 轻量 Agent Runtime
+本项目不是完整 AutoGPT，也不是通用 Web Agent。本项目实现的是支持典型智能体工作流的轻量 Agent Runtime，并将 Event-Sourced Memory 作为 Agent 侧内存管理优化机制。
 
-`AgentRuntime` 的执行链路是：
+## Architecture
 
-1. 接收用户输入。
-2. 在 `tool_calling` 阶段根据规则路由工具。
-3. 执行安全工具并保存 `ToolResult`。
-4. 由 memory backend 构造 prompt。
-5. 调用 mock、vLLM 或 OpenAI-compatible backend。
-6. 返回回答和 token、latency、TTFT、tool token 等指标。
+核心模块：
 
-这个 runtime 是 benchmark harness，不是完整 AutoGPT。它保留多轮、工具调用和分支实验所需的最小能力。
+- `AgentRuntime`：执行多轮输入、轻量 next_action loop、工具调用、LLM 调用和指标采集。
+- `ToolExecutor` + `ToolResultStore`：执行工具，保存 raw output、chunk、index 和 artifact metadata。
+- `EventSourcedMemoryAdapter`：optimized memory backend，记录事件并投影 Task State View。
+- `MemoryDeltaParser`：解析模型输出协议，非法 JSON fallback 为普通 assistant response。
+- `MemoryProjector` + `StateReducer`：将 memory_delta、tool_result artifact 和用户上下文合并为通用状态视图。
+- `MemoryViewRenderer`：稳定渲染 Task State View、Artifact References、Recent Context 和 Current Query。
+- `Evaluator`：读取 benchmark task 的显式规则，评估 success、score 和 failure reason。
 
-## Evaluator
+## Baseline
 
-主 benchmark 从 `benchmarks/tasks/` 读取固定 JSONL 任务。每条任务可以声明：
+baseline 用于复现未优化 Agent 的上下文膨胀：
 
-- `expected_tools`
-- `answer_keywords`
-- `expected_stages`
-- `min_metrics`
-- `max_metrics`
-
-`agentmem.evaluation` 根据这些显式规则输出 `success`、`score` 和 `failure_reason`。runtime 只提供结构性执行状态，不把“完成一次调用”直接等同于任务成功。
-
-## BaselineMemory
-
-`BaselineMemory` 用作对照组：
-
-- 所有工具完整 skill 文档进入 prompt。
-- 工具 raw output 全文进入 prompt。
+- 工具 raw output 直接进入 prompt。
 - 历史消息完整保留。
-- 不做历史摘要、工具外置或 lazy loading。
+- 工具说明和动态上下文会反复注入。
+- 分支推理按复制完整 shared context 估算成本。
 
-它用于复现智能体推理中最直接的上下文膨胀。
+baseline 是正式对照组。它的任务不是“更差实现”，而是代表常见的线性历史拼接方式。
 
-## OptimizedMemory
+## Optimized: Event-Sourced Agent Memory
 
-`OptimizedMemory` 实现 AgentMem 的优化路径：
+AgentMem optimized 的核心是 Event-Sourced Agent Memory。
 
-- 稳定 prompt 前缀。
-- 工具 brief 默认注入。
-- 命中工具后再加载对应 skill。
-- 工具 raw output 外置。
-- 旧历史压缩成 summary。
+### Event Log
 
-这些策略共同减少输入 token，降低 prefill 工作量，并间接降低 KV Cache 增长压力。
+Agent 执行过程记录为事件：
 
-## Stable Prefix
+- `user_message`
+- `tool_call`
+- `tool_result`
+- `assistant_response`
+- `memory_delta`
+- `final_answer`
+- `metric`
 
-optimized prompt 使用固定段落顺序：
+事件写入 `results/event_log/<run_id>.jsonl`，每行一个 JSON event。快照写入 `results/event_memory_snapshots/`，用于从最近状态恢复。
 
-1. `[system]`
-2. `[project_rules]`
-3. `[tool_briefs]`
-4. `[loaded_skills]`
-5. `[history_summary]`
-6. `[recent_dialogue]`
-7. `[tool_summaries]`
+### Memory Delta
 
-system、project rules 和 tool brief 的顺序稳定；动态历史、工具摘要和当前问题放在后部。prefix-cache benchmark 会对比 baseline 的动态前缀和 optimized 的稳定前缀。
+模型在同一次响应中输出：
 
-## Tool Result Externalization
+```json
+{
+  "assistant_response": "...",
+  "next_action": null,
+  "memory_delta": {
+    "goals": [],
+    "constraints": [],
+    "facts": [],
+    "decisions": [],
+    "open_questions": [],
+    "todos": [],
+    "artifact_refs": [],
+    "tool_summaries": [],
+    "warnings": []
+  }
+}
+```
 
-baseline 会把工具 raw output 全文放回 prompt。对于日志、文件和 repo scan，这会快速放大 prompt tokens。
+`memory_delta` 是 Agent 主动写入内存的协议。Memory 核心不使用第二个 LLM extractor，也不从自然语言中硬编码抽取 benchmark 关键词。
 
-optimized 会把 raw output 写入：
+### Task State View
 
-- `results/tool_store/raw/`
-- `results/tool_store/index/`
-- `results/tool_store/chunks/`
+Memory Manager 将事件流投影为通用 Task State View：
 
-prompt 中只保留：
+- goals
+- constraints
+- facts
+- decisions
+- open_questions
+- todos
+- artifact_refs
+- tool_summaries
+- warnings
 
-- `tool_name`
-- `result_id`
-- `raw_token_len`
-- `summary_token_len`
-- `summary`
+Reducer 只做通用合并、去重和容量控制：按 confidence、importance 和 recency 保留 top-k，不写死 OOM、timeout、KV cache、baseline、optimized 等任务关键词。
 
-benchmark 记录 `raw_tool_tokens`、`injected_tool_tokens` 和 `tool_compression_ratio`。
+### Artifact References
 
-## Skill Lazy Loading
+所有工具结果统一 artifact 化：
 
-baseline 会注入所有工具完整说明。
+```json
+{
+  "result_id": "...",
+  "tool_name": "...",
+  "summary": "...",
+  "artifacts": [
+    {
+      "artifact_type": "text|table|log|json|code",
+      "path": "...",
+      "token_count": 0,
+      "description": "..."
+    }
+  ],
+  "metadata": {}
+}
+```
 
-optimized 默认只注入工具 brief 列表。工具路由命中特定工具后，只加载该工具的 `SKILL.md`。benchmark 记录：
+raw output 保存到 `results/tool_store/raw/`。Prompt 只注入 summary、result_id 和 artifact metadata，不渲染 raw content。`tools.max_output_chars` 只限制 prompt/display 注入，不影响 raw store 保存完整工具结果；只有显式配置 `raw_store_max_mb` 时才会限制 raw store。
 
-- `tool_brief_tokens`
-- `loaded_skill_tokens`
+### Stable Renderer
 
-## History Summary
+Renderer 使用稳定段落顺序：
 
-baseline 完整保留历史。
+1. Task State
+2. Goals
+3. Constraints
+4. Facts
+5. Decisions
+6. Open Questions
+7. Todos
+8. Artifact References
+9. Recent Context
+10. Current Query
 
-optimized 根据 `memory.recent_rounds` 保留最近几轮完整消息，更早历史由 `ContextCompressor` 压缩成 summary。long-session benchmark 记录：
+稳定结构让 system/project/tool/state 的前缀尽量保持一致，为 vLLM prefix cache 复用创造条件。
 
-- `history_tokens`
-- `summary_tokens`
-- `recent_turns`
+## Multi-step next_action Loop
 
-## Branch Context Sharing
+optimized Runtime 支持轻量多步 Agent loop：
 
-`BranchManager` 在 Agent 上下文层实现 shared context + delta 的 Copy-on-Write 模型。
+1. 构造 prompt。
+2. 调用 LLM。
+3. 解析 `assistant_response`、`next_action`、`memory_delta`。
+4. 如果 `next_action.type == "tool_call"`，执行工具、保存 artifact、写入 tool_call/tool_result event，再进入下一 step。
+5. 如果 `next_action` 为空或 `type == "final"`，返回 final answer。
+6. 达到 `agent.max_steps` 后强制返回最新 assistant response。
 
-baseline 估算每个分支复制完整 shared context 的 token 成本。optimized 只保存一份 shared context，每个分支保存自己的 delta。branching benchmark 记录：
+默认配置：
 
-- `shared_context_tokens`
-- `branch_delta_tokens`
-- `duplicated_context_tokens`
-- `optimized_context_tokens`
-- `branch_saving_ratio`
+```yaml
+agent:
+  max_steps: 3
+  enable_next_action_loop: true
+```
+
+这个 loop 覆盖 planning、tool_calling、reflection、final_answer 等 benchmark 所需流程，但不实现完整 AutoGPT 的长期自主规划。
+
+## Benchmark Boundary
+
+Benchmark evaluator 可以是任务特定的。例如 task 文件可以要求答案包含某些 required facts，tool-heavy 可以检查日志相关事实，multi-stage 可以检查表格指标和优化建议。
+
+这些任务关键词只允许出现在：
+
+- `benchmarks/tasks/*.jsonl`
+- evaluator
+- 工具内部，例如 `log_analyzer`
+- 测试数据
+
+Memory 核心只理解通用 memory_delta 和 artifact_refs。
+
+## Report Boundary
+
+Report 会说明已配置模型 backend 的结果，包括 Qwen/MiniCPM 等开源模型服务的 latency、TTFT、tokens_per_second、peak_gpu_memory_mb 和 prefix cache metrics。
+
+如果 `nvidia-smi` 或 vLLM `/metrics` 不可用，相关字段写为 `-1`，benchmark 不崩溃。

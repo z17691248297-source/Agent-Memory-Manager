@@ -192,6 +192,14 @@ class EventSourcedMemoryAdapter:
         ratios = [result.compression_ratio for result in self.tool_results if result.raw_token_len > 0]
         return {
             **self.last_token_breakdown,
+            "state_view_tokens": self.renderer.last_state_view_tokens,
+            "event_count": self.event_count,
+            "memory_delta_count": self.memory_delta_count,
+            "fact_count": len(self.state.facts),
+            "decision_count": len(self.state.decisions),
+            "artifact_ref_count": len(self.state.artifact_refs),
+            "snapshot_count": self.snapshot_store.snapshot_count,
+            "full_history_tokens": self._full_history_tokens(),
             "raw_tool_tokens": raw_tool_tokens,
             "injected_tool_tokens": injected,
             "tool_compression_ratio": sum(ratios) / len(ratios) if ratios else 1.0,

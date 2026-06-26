@@ -121,7 +121,7 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
     llm = dict(config.get("llm") or {})
     memory = dict(config.get("memory") or {})
     benchmark = dict(config.get("benchmark") or {})
-    backend = _detect_backend(frames, str(llm.get("backend", "mock")))
+    backend = _detect_backend(frames, str(llm.get("backend", "vllm")))
     scenarios = [name for name, rows in frames.items() if rows]
     all_modes = {str(row.get("mode")) for rows in frames.values() for row in rows if row.get("mode")}
     preferred_modes = {
@@ -145,31 +145,43 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
         "",
         _settings_table(backend, llm, memory, benchmark, scenarios, modes),
         "",
-        "## 3. Workloads",
+        "## 3. 系统架构",
+        "",
+        _architecture_section(),
+        "",
+        "## 4. Workloads",
         "",
         _workload_section(frames),
         "",
-        "## 4. Hardware",
+        "## 5. Hardware",
         "",
         _hardware_section(hardware),
         "",
-        "## 5. Success / Score",
+        "## 6. Success / Score",
         "",
         _success_score_section(frames),
         "",
-        "## 6. Tool-heavy 结果",
+        "## Mock Backend Results",
+        "",
+        _backend_results_section(frames, "mock"),
+        "",
+        "## vLLM Backend Results",
+        "",
+        _backend_results_section(frames, "vllm"),
+        "",
+        "## 7. Tool-heavy 结果",
         "",
         "该场景复现大规模工具输出直接进入 prompt 后造成的上下文膨胀。",
         "",
         _tool_heavy_section(frames["tool_heavy"]),
         "",
-        "## 7. Long-session 结果",
+        "## 8. Long-session 结果",
         "",
         "该场景复现多轮长生命周期会话中历史上下文持续增长的问题。",
         "",
         _long_session_section(frames["long_session"]),
         "",
-        "## 8. Multi-stage 结果",
+        "## 9. Multi-stage 结果",
         "",
         "该场景覆盖 planning -> tool_calling -> reflection -> final_answer 的多阶段智能体流程。",
         "",
@@ -179,23 +191,27 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
         "",
         _event_memory_section(frames),
         "",
-        "## 9. Branching 结果",
+        "## 10. Branching 结果",
         "",
         "该场景复现分支推理中公共上下文重复复制的问题。这里实现的是 Agent 上下文层共享，不是 vLLM 底层 KV block sharing。",
         "",
         _branching_section(frames["branching"]),
         "",
-        "## 10. Prefix-cache 结果",
+        "## 11. Prefix-cache 结果",
         "",
-        "该场景验证稳定 prompt prefix 对 prefix cache 复用、prefill 和 TTFT 的影响。mock 后端只记录 prefix hash 与 token 统计；vLLM 后端会尽力读取 /metrics。",
+        "该场景验证稳定 prompt prefix 对 prefix cache 复用、prefill 和 TTFT 的影响。vLLM 后端会尽力读取 /metrics。",
         "",
         _prefix_cache_section(frames["prefix_cache"]),
         "",
-        "## 11. Ablation 结果",
+        "## 12. Ablation 结果",
         "",
         _ablation_section(frames["ablation"]),
         "",
-        "## 12. 结论",
+        "## 13. 当前局限性",
+        "",
+        _limitations_section(),
+        "",
+        "## 14. 结论",
         "",
         _conclusion(frames),
         "",
@@ -212,19 +228,16 @@ def _settings_table(
     modes: list[str],
 ) -> str:
     optimizations = [
-        name
-        for key, name in [
-            ("enable_stable_prefix", "stable_prefix"),
-            ("enable_tool_externalization", "tool_externalization"),
-            ("enable_skill_lazy_loading", "skill_lazy_loading"),
-            ("enable_history_summary", "history_summary"),
-            ("enable_branch_sharing", "branch_sharing"),
-        ]
-        if bool(memory.get(key, True))
+        "event_sourced_memory",
+        "memory_delta",
+        "artifact_refs",
+        "stable_renderer",
     ]
+    if bool(memory.get("enable_tool_externalization", True)):
+        optimizations.append("tool_externalization")
     rows = [
         {"item": "backend", "value": backend},
-        {"item": "model", "value": llm.get("model", "")},
+        {"item": "model", "value": _display_model(backend, llm)},
         {"item": "scenarios", "value": ", ".join(scenarios) if scenarios else "none"},
         {"item": "mode", "value": ", ".join(modes) if modes else "none"},
         {"item": "repeat", "value": benchmark.get("repeat", "")},
@@ -232,6 +245,10 @@ def _settings_table(
         {"item": "enabled_optimizations", "value": ", ".join(optimizations)},
     ]
     return _markdown_table(rows, ["item", "value"])
+
+
+def _display_model(backend: str, llm: dict[str, Any]) -> str:
+    return str(llm.get("model", ""))
 
 
 def _workload_section(frames: dict[str, Rows]) -> str:
@@ -255,6 +272,70 @@ def _workload_section(frames: dict[str, Rows]) -> str:
     rows.append({"scenario": "prefix-cache", "workload_file": "metric:prefix-cache", "tasks": len(frames["prefix_cache"])})
     rows.append({"scenario": "ablation", "workload_file": "metric:ablation", "tasks": len(frames["ablation"])})
     return _markdown_table(rows, ["scenario", "workload_file", "tasks"])
+
+
+def _architecture_section() -> str:
+    return "\n".join(
+        [
+            "本项目不是完整 AutoGPT，也不是通用 Web Agent。本项目实现的是支持典型智能体工作流的轻量 Agent Runtime，并将 Event-Sourced Memory 作为 Agent 侧内存管理优化机制。",
+            "",
+            "- AgentRuntime：负责多轮输入、轻量 next_action loop、工具执行、LLM 调用和指标采集。",
+            "- Event-Sourced Memory：记录 user_message、tool_call、tool_result、assistant_response、memory_delta、final_answer、metric 等事件。",
+            "- memory_delta：Agent 在同一次模型响应中主动写入 goals、constraints、facts、decisions、open_questions、todos、artifact_refs、tool_summaries 和 warnings。",
+            "- Task State View：Memory Manager 从事件流投影出的结构化状态，prompt 渲染 Task State View、Artifact References、Recent Context 和 Current Query。",
+            "- Tool Store：工具 raw output 保存在 results/tool_store/raw/，prompt 只引用 result_id、summary 和 artifact metadata。",
+            "- Stable Renderer：保持 prompt 结构稳定，为 vLLM prefix cache 复用创造条件。",
+        ]
+    )
+
+
+def _backend_results_section(frames: dict[str, Rows], backend: str) -> str:
+    rows = [row for frame in frames.values() for row in frame if row.get("backend") == backend]
+    if not rows:
+        return "暂无已配置模型结果。请先运行 `python -m agentmem benchmark --scenario <name>`。"
+    grouped = _group(rows, ["scenario", "mode"], {
+        "prompt_tokens": "mean",
+        "state_view_tokens": "mean",
+        "latency": "mean",
+        "ttft": "mean",
+        "tokens_per_second": "mean",
+        "peak_gpu_memory_mb": "max",
+        "prefix_cache_hit_rate": "mean",
+        "cached_prompt_tokens": "mean",
+        "kv_cache_usage": "mean",
+        "score": "mean",
+    })
+    for row in grouped:
+        group_rows = [item for item in rows if item.get("scenario") == row.get("scenario") and item.get("mode") == row.get("mode")]
+        row["success_rate"] = _success_rate(group_rows)
+    note = "说明：本节使用 configs/config.yaml 中配置的模型 backend；latency、TTFT、tokens_per_second 和显存字段用于真实性能分析。/metrics 不可用时 prefix cache 字段为 -1。"
+    fields = [
+        "scenario",
+        "mode",
+        "prompt_tokens",
+        "state_view_tokens",
+        "latency",
+        "ttft",
+        "tokens_per_second",
+        "peak_gpu_memory_mb",
+        "prefix_cache_hit_rate",
+        "cached_prompt_tokens",
+        "kv_cache_usage",
+        "success_rate",
+        "score",
+    ]
+    return "\n\n".join([note, _markdown_table(grouped, fields)])
+
+
+def _limitations_section() -> str:
+    return "\n".join(
+        [
+            "- vLLM 指标依赖服务端版本和 /metrics 暴露情况；缺失时报告为 -1。",
+            "- 当前 next_action loop 是轻量实现，覆盖工具调用和有限多步决策，不是完整 AutoGPT。",
+            "- Event-Sourced Memory 依赖模型按协议输出 memory_delta；非法 JSON 会 fallback 为普通回答。",
+            "- 本项目不修改 vLLM kernel，不声称实现底层 KV block sharing。",
+        ]
+    )
 
 
 def _hardware_section(hardware: dict[str, Any]) -> str:

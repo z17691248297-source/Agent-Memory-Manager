@@ -1,12 +1,22 @@
 # AgentMem
 
-AgentMem 是一个面向智能体推理过程的内存优化 Benchmark 系统。
+AgentMem 是一个面向智能体推理过程的轻量 Agent Runtime + Memory Manager，并提供可复现 Benchmark 来评估优化前后的上下文、质量和真实性能指标。
 
-它的目标不是做一个完整 AutoGPT，也不是做 Web 诊断产品，而是复现智能体长生命周期推理中的上下文膨胀问题，并验证 Agent 层内存管理策略是否能降低 prompt tokens、工具注入 tokens、延迟和显存压力。
+本项目不是完整 AutoGPT，也不是通用 Web Agent。本项目实现的是支持典型智能体工作流的轻量 Agent Runtime，并将 Event-Sourced Memory 作为 Agent 侧内存管理优化机制。
 
-核心结论服务于一句话：
+核心目标是：在相同硬件配置和相同开源模型服务下，对比 baseline 和 optimized Agent 内存路径，评估 prompt tokens、latency、TTFT、吞吐、显存、success rate 和 score。
 
-> AgentMem 通过 Agent 层内存管理减少输入 token 和上下文膨胀，从而间接降低 vLLM prefill 与 KV Cache 压力。
+## Optimized 主线
+
+AgentMem optimized 的核心是 Event-Sourced Agent Memory：
+
+1. Agent 执行过程记录为事件：`user_message`、`tool_call`、`tool_result`、`assistant_response`、`memory_delta`、`final_answer`、`metric`。
+2. Agent 每轮通过 `memory_delta` 主动写入结构化记忆：`goals`、`constraints`、`facts`、`decisions`、`open_questions`、`todos`、`artifact_refs`、`tool_summaries`、`warnings`。
+3. Memory Manager 将事件流投影为 Task State View。
+4. Prompt 不再拼接完整长历史，而是渲染 Task State View、Artifact References、Recent Context 和 Current Query。
+5. 工具结果以 artifact/result_id 形式外置保存到 `results/tool_store/`。
+6. Stable Renderer 保证 prompt 结构稳定，为 vLLM prefix cache 复用创造条件。
+7. History Summary 只作为对照组或 fallback，不再作为 optimized 的核心解释。
 
 ## 安装
 
@@ -17,73 +27,60 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-默认配置使用项目组提供的远程 vLLM OpenAI-compatible API。离线 smoke test 可以在命令里加 `--backend mock`。
+## 配置模型
+
+`configs/config.yaml` 已接入自有模型服务。核心配置：
+
+```yaml
+llm:
+  backend: vllm
+  model: /path/to/Qwen2.5-7B-Instruct
+  base_url: http://<model-host>:8000/v1
+  api_key: EMPTY
+  temperature: 0
+  max_tokens: 512
+  timeout: 120
+
+agent:
+  max_steps: 3
+  enable_next_action_loop: true
+
+vllm:
+  metrics_url: http://<model-host>:8000/metrics
+```
+
+`backend=vllm` 使用 OpenAI-compatible Chat Completions API，并通过 streaming 记录 TTFT。
 
 ## 常用命令
 
 ```bash
-python -m agentmem
-python -m agentmem chat
 python -m agentmem benchmark --scenario tool-heavy
 python -m agentmem benchmark --scenario long-session
 python -m agentmem benchmark --scenario multi-stage
 python -m agentmem benchmark --scenario branching
 python -m agentmem benchmark --scenario prefix-cache
-python -m agentmem benchmark --scenario ablation
-python -m agentmem benchmark --all
 python -m agentmem report
-python -m agentmem tools
-python -m agentmem config show
-python -m agentmem clean
 ```
 
-旧入口 `run`、`ask`、`eval` 仍保留，用于单轮调试和固定 workload smoke test。`benchmarks/run_*.py` 属于 legacy 调试脚本，比赛主线以 `python -m agentmem benchmark` 和 `python -m agentmem report` 为准。
-
-## Baseline vs Optimized
-
-baseline 模式：
-
-- 所有工具完整说明进入 prompt。
-- 工具 raw output 全文进入 prompt。
-- 多轮历史完整保留。
-- 分支推理复制完整 shared context。
-- prompt prefix 允许动态字段和工具顺序扰动。
-
-optimized 模式：
-
-- Stable Prefix Prompt：system、project rules、tool brief 固定排序，动态内容后置。
-- Tool Result Externalization：raw output 保存到 `results/tool_store/`，prompt 只注入 summary、result_id 和 token 统计。
-- Skill Lazy Loading：默认只注入工具 brief，命中工具后加载对应 skill。
-- History Summary：旧历史压缩成 summary，只保留最近 `recent_rounds` 轮完整上下文。
-- Branch Context Sharing：Agent 上下文层共享 shared context，每个分支只保存 delta。
-
-## Benchmark Scenarios
-
-```bash
-python -m agentmem benchmark --scenario tool-heavy --backend mock
-python -m agentmem benchmark --scenario long-session --backend mock
-python -m agentmem benchmark --scenario multi-stage --backend mock
-python -m agentmem benchmark --scenario branching --backend mock
-python -m agentmem benchmark --scenario prefix-cache --backend mock
-python -m agentmem benchmark --scenario ablation --backend mock
-```
-
-主 benchmark 读取固定任务文件：
-
-- `benchmarks/tasks/tool_heavy.jsonl`
-- `benchmarks/tasks/long_session.jsonl`
-- `benchmarks/tasks/multi_stage.jsonl`
-- `benchmarks/tasks/branching.jsonl`
-
-每条任务声明 evaluator 规则，CSV 会输出 `success`、`score` 和 `failure_reason`。
-
-也可以一次运行全部：
+全部场景：
 
 ```bash
 bash scripts/run_all.sh
 ```
 
-主要输出：
+## Benchmark Scenarios
+
+- `tool-heavy`：工具调用和工具结果外置。
+- `long-session`：多轮长生命周期任务。
+- `multi-stage`：planning -> tool_calling -> reflection -> final_answer。
+- `branching`：分支推理和上下文复制成本。
+- `prefix-cache`：稳定 prompt prefix 和 vLLM prefix cache 指标。
+
+Benchmark task 位于 `benchmarks/tasks/*.jsonl`。Evaluator 可以按任务定义 `required_facts`、`answer_keywords`、`expected_tools` 和 `expected_stages`，但 Memory 核心不写死这些 benchmark 关键词。
+
+## 结果文件
+
+运行后主要输出：
 
 - `results/tool_heavy_baseline.csv`
 - `results/tool_heavy_optimized.csv`
@@ -91,46 +88,40 @@ bash scripts/run_all.sh
 - `results/long_session_optimized.csv`
 - `results/multi_stage_baseline.csv`
 - `results/multi_stage_optimized.csv`
-- `results/branch_benchmark.csv`
+- `results/branching_baseline.csv`
+- `results/branching_optimized.csv`
 - `results/prefix_cache_baseline.csv`
 - `results/prefix_cache_optimized.csv`
-- `results/ablation.csv`
+- `results/vllm_benchmark.csv`
 - `results/summary.csv`
 - `results/report.md`
+- `results/event_log/`
+- `results/event_memory_snapshots/`
+- `results/tool_store/`
 
-## vLLM 模式
+long-session 和 multi-stage 还保留 `full_history`、`summary_memory`、`event_sourced_memory` 细分 CSV，用于报告中展示 full history、summary memory 与 event-sourced memory 的对比。
 
-当前项目组 vLLM API 已写入 `configs/config.yaml`：
+## vLLM 指标
 
-```yaml
-llm:
-  backend: vllm
-  model: /home/vip/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28
-  base_url: http://47.108.145.21/v1
-  api_key: EMPTY
-  temperature: 0
-  max_tokens: 512
-  timeout: 120
-```
+CSV 会记录：
 
-运行：
+- `model`
+- `prompt_tokens`
+- `output_tokens`
+- `total_tokens`
+- `latency`
+- `ttft`
+- `tokens_per_second`
+- `peak_gpu_memory_mb`
+- `prefix_cache_hit_rate`
+- `cached_prompt_tokens`
+- `kv_cache_usage`
 
-```bash
-python -m agentmem run "用一句话解释 KV Cache。"
-python -m agentmem benchmark --scenario prefix-cache --backend vllm
-python -m agentmem report
-```
+如果 `nvidia-smi` 不可用，`peak_gpu_memory_mb` 为 `-1`。如果 `/metrics` 不可用，prefix cache 相关字段为 `-1`。如果 vLLM 连接失败，CLI 会输出清晰错误：`vLLM backend is unavailable. Please check llm.base_url in configs/config.yaml.`
 
-如果 `/metrics` 或 `nvidia-smi` 不可用，相关字段写为 `-1`，benchmark 不会因为这些增强指标缺失而崩溃。
+## openEuler / openKylin
 
-## 查看报告
-
-```bash
-python -m agentmem report
-less results/report.md
-```
-
-报告包含项目目标、实验设置、固定 workload、硬件环境、success/score、各场景结果、ablation 和自动结论。
+部署说明见 [docs/openeuler_deployment.md](docs/openeuler_deployment.md)。如果模型机当前是 Ubuntu，也可以按同一流程启动 vLLM；正式文档以 openEuler 22.03 LTS / 24.03 LTS 和 openKylin 环境为目标。
 
 ## 测试
 
@@ -138,5 +129,3 @@ less results/report.md
 python -m pytest
 bash scripts/run_all.sh
 ```
-
-mock backend 是默认测试路径，用来保证无 GPU、无模型服务的环境也能复现实验流程。

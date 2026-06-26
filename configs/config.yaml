@@ -8,6 +8,10 @@ llm:
   max_tokens: 512
   timeout: 120
 
+agent:
+  max_steps: 3
+  enable_next_action_loop: true
+
 vllm:
   metrics_url: http://47.108.145.21/metrics
   enable_prefix_caching: true

@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from agentmem.runtime.llm_client import OpenAICompatibleClient
-from agentmem.runtime.mock_llm import MockLLMClient
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -16,7 +15,7 @@ def load_runtime_config(config_path: str | Path | None = None) -> dict[str, Any]
     """读取运行配置；只依赖本地 config 文件，不访问网络。"""
     path = Path(config_path) if config_path else PROJECT_ROOT / "configs" / "config.yaml"
     if not path.exists():
-        return {"llm": {"backend": "mock"}}
+        return {"llm": {"backend": "vllm"}}
     text = path.read_text(encoding="utf-8")
     try:
         import yaml  # type: ignore
@@ -36,7 +35,6 @@ def build_llm_client(config_path: str | Path | None = None):
     """按配置构造 LLM client。
 
     支持：
-    - mock：无 GPU、无模型测试后端。
     - vllm：本地 vLLM OpenAI-compatible 服务。
     - openai_compatible/openai：模型厂商 OpenAI-compatible API。
 
@@ -48,10 +46,7 @@ def build_llm_client(config_path: str | Path | None = None):
     """
     config = load_runtime_config(config_path)
     llm_config = dict(config.get("llm") or {})
-    backend = os.getenv("AGENTMEM_LLM_BACKEND", str(llm_config.get("backend", "mock"))).lower()
-
-    if backend == "mock":
-        return MockLLMClient()
+    backend = os.getenv("AGENTMEM_LLM_BACKEND", str(llm_config.get("backend", "vllm"))).lower()
 
     if backend in {"vllm", "openai", "openai_compatible", "openai-compatible"}:
         default_base_url = "http://localhost:8000/v1" if backend == "vllm" else "https://api.openai.com/v1"

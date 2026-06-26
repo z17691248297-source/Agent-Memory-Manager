@@ -45,5 +45,5 @@ def test_vllm_backend_unavailable_has_clear_error(tmp_path, capsys, monkeypatch)
     captured = capsys.readouterr()
     combined = captured.out + captured.err
     assert code == 1
-    assert "vllm backend unavailable" in combined
+    assert "vLLM backend is unavailable. Please check llm.base_url in configs/config.yaml." in combined
     assert "Traceback" not in combined

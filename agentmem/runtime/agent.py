@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from uuid import uuid4
 
-from agentmem.event_memory.memory_delta import MemoryDeltaParser
+from agentmem.event_memory.memory_delta import MemoryDelta, MemoryDeltaParser
 from agentmem.memory.display import prompt_display_tokens
 from agentmem.memory.memory_object import estimate_tokens
 from agentmem.metrics.gpu_monitor import get_peak_gpu_memory_mb
@@ -22,6 +22,8 @@ class AgentRuntime:
         llm_client,
         tool_executor: ToolExecutor | None = None,
         tool_router: ToolRouter | None = None,
+        max_steps: int = 1,
+        enable_next_action_loop: bool = False,
     ) -> None:
         self.memory = memory
         self.tools = tools
@@ -30,6 +32,8 @@ class AgentRuntime:
         self.tool_router = tool_router or ToolRouter()
         self.round = 0
         self.memory_delta_parser = MemoryDeltaParser()
+        self.max_steps = max(1, int(max_steps or 1))
+        self.enable_next_action_loop = bool(enable_next_action_loop)
 
     def run(self, user_input: str, stage: str = "planning") -> tuple[str, dict]:
         self.round += 1
@@ -39,25 +43,86 @@ class AgentRuntime:
         self.memory.add_user_message(user_input)
 
         decision = self.tool_router.route(user_input, stage, self.tools.available_tools())
-        selected_tools = decision.selected_tool_names
+        selected_tools = list(decision.selected_tool_names)
         tool_results = []
-        if self.tool_executor:
-            for tool_name in selected_tools:
-                if hasattr(self.memory, "record_tool_call"):
-                    self.memory.record_tool_call(tool_name, user_input, stage)
-                start = time.perf_counter()
-                result = self.tool_executor.execute(tool_name, user_input, context={"stage": stage})
-                self.memory.add_tool_result(result)
-                tool_results.append(result)
-                result.latency = time.perf_counter() - start
+        prompt_tokens = output_tokens = total_tokens = 0
+        latency = ttft = tokens_per_second = 0.0
+        assistant_response = ""
+        completion_reached = False
+        llm_error = ""
+        step_index = 0
 
-        messages = self.memory.build_messages(stage=stage, selected_tools=selected_tools)
-        response = self.llm_client.chat(messages)
-        parsed = self.memory_delta_parser.parse(response.get("content", ""))
-        assistant_response = parsed.assistant_response
-        self.memory.add_assistant_message(assistant_response)
-        if hasattr(self.memory, "record_memory_delta"):
-            self.memory.record_memory_delta(parsed.memory_delta)
+        if self.tool_executor and selected_tools and not self.enable_next_action_loop:
+            for tool_name in selected_tools:
+                result = self._execute_tool(tool_name, user_input, stage, tool_results)
+                if result.status in {"failed", "timeout", "permission_denied"}:
+                    completion_reached = True
+                    break
+
+        max_llm_steps = self.max_steps if self.enable_next_action_loop else 1
+        for step_index in range(1, max_llm_steps + 1):
+            messages = self.memory.build_messages(stage=stage, selected_tools=selected_tools)
+            try:
+                response = self.llm_client.chat(messages)
+            except RuntimeError as exc:
+                llm_error = str(exc)
+                prompt_tokens += estimate_tokens(str(messages))
+                assistant_response = f"LLM call failed: {llm_error}"
+                self.memory.add_assistant_message(assistant_response)
+                completion_reached = True
+                break
+            prompt_tokens += int(response.get("prompt_tokens", 0) or 0)
+            output_tokens += int(response.get("completion_tokens", 0) or 0)
+            total_tokens += int(response.get("total_tokens", 0) or 0)
+            latency += float(response.get("latency", 0.0) or 0.0)
+            if step_index == 1:
+                ttft = float(response.get("ttft", -1) or -1)
+            tokens_per_second = float(response.get("tokens_per_second", -1) or -1)
+
+            parsed = self.memory_delta_parser.parse(response.get("content", ""))
+            assistant_response = parsed.assistant_response
+            self.memory.add_assistant_message(assistant_response)
+            if hasattr(self.memory, "record_memory_delta"):
+                self.memory.record_memory_delta(parsed.memory_delta)
+
+            next_action = parsed.next_action or {}
+            if not self.enable_next_action_loop or _is_final_action(next_action):
+                if (
+                    self.enable_next_action_loop
+                    and stage == "tool_calling"
+                    and step_index == 1
+                    and selected_tools
+                    and not tool_results
+                ):
+                    result = self._execute_tool(selected_tools[0], user_input, stage, tool_results)
+                    if result.status not in {"failed", "timeout", "permission_denied"}:
+                        continue
+                completion_reached = True
+                break
+            if str(next_action.get("type", "")).lower() != "tool_call":
+                completion_reached = True
+                break
+            tool_name = str(next_action.get("tool") or next_action.get("name") or "")
+            if not tool_name:
+                completion_reached = True
+                break
+            result = self._execute_tool(tool_name, _tool_input_from_action(next_action, user_input), stage, tool_results)
+            selected_tools = [tool_name]
+            if result.status in {"failed", "timeout", "permission_denied"}:
+                self.memory.add_assistant_message(f"Tool call failed: {tool_name} status={result.status}")
+                if hasattr(self.memory, "record_memory_delta"):
+                    self.memory.record_memory_delta(
+                        MemoryDelta(
+                            warnings=[
+                                f"Tool call failed: {tool_name} status={result.status} error={result.error or ''}".strip()
+                            ]
+                        )
+                    )
+                completion_reached = True
+                break
+
+        if not completion_reached and assistant_response:
+            self.memory.add_assistant_message("Max agent steps reached; returning latest assistant response.")
         hint = self.memory.latest_metrics_hint()
         round_raw_tool_tokens = sum(result.raw_token_len for result in tool_results)
         uses_tool_externalization = bool(getattr(self.memory, "enable_tool_externalization", False))
@@ -72,7 +137,7 @@ class AgentRuntime:
             if uses_tool_externalization
             else 1.0
         )
-        structural_success = bool(assistant_response.strip()) and all(
+        structural_success = bool(assistant_response.strip()) and not llm_error and all(
             result.status not in {"failed", "timeout", "permission_denied"} for result in tool_results
         )
 
@@ -81,7 +146,8 @@ class AgentRuntime:
             "round": self.round,
             "mode": self.memory.mode,
             "stage": stage,
-            "prompt_tokens": response["prompt_tokens"],
+            "model": getattr(self.llm_client, "model", ""),
+            "prompt_tokens": prompt_tokens,
             "system_tokens": hint.get("system", 0),
             "tool_schema_tokens": hint.get("tool_schema", 0),
             "tool_brief_tokens": hint.get("tool_brief", 0),
@@ -98,13 +164,15 @@ class AgentRuntime:
             "raw_tool_tokens": round_raw_tool_tokens,
             "injected_tool_tokens": round_injected_tool_tokens,
             "tool_compression_ratio": round_tool_compression_ratio,
-            "latency": response["latency"] + sum(result.latency for result in tool_results),
-            "ttft": response.get("ttft", -1),
-            "output_tokens": response["completion_tokens"],
-            "total_tokens": response["total_tokens"],
-            "tokens_per_second": response.get("tokens_per_second", -1),
+            "latency": latency + sum(result.latency for result in tool_results),
+            "ttft": ttft,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens or (prompt_tokens + output_tokens),
+            "tokens_per_second": tokens_per_second,
             "peak_gpu_memory_mb": get_peak_gpu_memory_mb(),
             "success": structural_success,
+            "agent_steps": max_llm_steps if not completion_reached else min(max_llm_steps, step_index),
+            "llm_error": llm_error,
         }
         if hasattr(self.memory, "record_metrics"):
             self.memory.record_metrics(metrics)
@@ -123,6 +191,37 @@ class AgentRuntime:
                 if key in final_hint:
                     metrics[key] = final_hint[key]
         return assistant_response, metrics
+
+    def _execute_tool(self, tool_name: str, input_text: str, stage: str, tool_results: list) -> object:
+        if hasattr(self.memory, "record_tool_call"):
+            self.memory.record_tool_call(tool_name, input_text, stage)
+        start = time.perf_counter()
+        result = self.tool_executor.execute(tool_name, input_text, context={"stage": stage}) if self.tool_executor else None
+        if result is None:
+            raise RuntimeError("tool_executor is not configured")
+        self.memory.add_tool_result(result)
+        tool_results.append(result)
+        result.latency = time.perf_counter() - start
+        return result
+
+
+def _is_final_action(action: dict) -> bool:
+    if not action:
+        return True
+    return str(action.get("type", "")).lower() in {"", "final", "finish", "none"}
+
+
+def _tool_input_from_action(action: dict, fallback: str) -> str:
+    args = action.get("args")
+    if isinstance(args, dict):
+        for key in ["input", "query", "text", "expression", "path"]:
+            value = args.get(key)
+            if value not in {None, ""}:
+                return str(value)
+        return str(args) if args else fallback
+    if args not in {None, ""}:
+        return str(args)
+    return fallback
 
 
 def _new_run_id() -> str:

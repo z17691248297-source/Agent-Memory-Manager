@@ -30,6 +30,7 @@ def build_agent(
     root = Path(project_root) if project_root else PROJECT_ROOT
     config_file = Path(config_path) if config_path else root / "configs" / "config.yaml"
     config = load_runtime_config(config_file)
+    agent_config = dict(config.get("agent") or {})
     results_root = _resolve_results_dir(root, config, results_dir)
 
     registry = build_default_registry(root / "skills")
@@ -52,11 +53,14 @@ def build_agent(
     else:
         raise ValueError(f"unsupported memory_mode: {memory_mode}")
 
+    enable_loop = bool(agent_config.get("enable_next_action_loop", True)) and mode == "optimized"
     return AgentRuntime(
         memory=memory,
         tools=registry,
         llm_client=build_llm_client(config_file),
         tool_executor=ToolExecutor(registry, store),
+        max_steps=int(agent_config.get("max_steps", 3)),
+        enable_next_action_loop=enable_loop,
     )
 
 

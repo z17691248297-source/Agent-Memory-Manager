@@ -116,7 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     benchmark.add_argument(
         "--backend",
-        choices=["mock", "vllm", "openai_compatible", "openai-compatible", "openai"],
+        choices=["vllm", "openai_compatible", "openai-compatible", "openai"],
         default=None,
     )
     benchmark.add_argument("--repeat", type=int, default=None)
@@ -137,7 +137,7 @@ def build_parser() -> argparse.ArgumentParser:
     set_cmd.add_argument("key")
     set_cmd.add_argument("value")
     use_cmd = config_sub.add_parser("use", help="switch model backend")
-    use_cmd.add_argument("backend", choices=["mock", "vllm", "openai", "openai_compatible", "openai-compatible"])
+    use_cmd.add_argument("backend", choices=["vllm", "openai", "openai_compatible", "openai-compatible"])
     use_cmd.add_argument("--base-url")
     use_cmd.add_argument("--model")
     use_cmd.add_argument("--api-key-env")
@@ -373,20 +373,27 @@ def benchmark_command(args: argparse.Namespace) -> int:
         options = BenchmarkOptions(
             scenario="all" if args.all else args.scenario,
             mode=args.mode,
-            backend=_normalize_backend(args.backend or dict(config.get("llm") or {}).get("backend", "mock")),
+            backend=_normalize_backend(args.backend or dict(config.get("llm") or {}).get("backend", "vllm")),
             repeat=int(args.repeat if args.repeat is not None else benchmark_config.get("repeat", 1)),
             output_dir=Path(args.output or benchmark_config.get("output_dir", DEFAULT_RESULTS)),
             config_path=args.config,
         )
         result = run_benchmark(options)
     except RuntimeError as exc:
-        backend = _normalize_backend(args.backend or dict(load_runtime_config(args.config).get("llm") or {}).get("backend", "mock"))
-        if backend in {"vllm", "openai_compatible", "openai"}:
+        backend = _normalize_backend(args.backend or dict(load_runtime_config(args.config).get("llm") or {}).get("backend", "vllm"))
+        if backend == "vllm":
+            print(
+                "vLLM backend is unavailable. Please check llm.base_url in configs/config.yaml.",
+                file=sys.stderr,
+            )
+            print(str(exc), file=sys.stderr)
+            return 1
+        if backend in {"openai_compatible", "openai"}:
             print(f"{backend} backend unavailable: {exc}", file=sys.stderr)
             return 1
         raise
     except Exception as exc:
-        if _normalize_backend(args.backend or dict(load_runtime_config(args.config).get("llm") or {}).get("backend", "mock")) in {"vllm", "openai_compatible", "openai"}:
+        if _normalize_backend(args.backend or dict(load_runtime_config(args.config).get("llm") or {}).get("backend", "vllm")) in {"vllm", "openai_compatible", "openai"}:
             print(f"benchmark failed: {exc}", file=sys.stderr)
             return 1
         raise
@@ -437,7 +444,7 @@ def print_config_summary(config_path: Path) -> None:
     llm = dict(config.get("llm") or {})
     memory = dict(config.get("memory") or {})
     print(f"config: {config_path}")
-    print(f"backend: {llm.get('backend', 'mock')}")
+    print(f"backend: {llm.get('backend', 'vllm')}")
     print(f"base_url: {llm.get('base_url', '')}")
     print(f"model: {llm.get('model', '')}")
     print(f"api_key_env: {llm.get('api_key_env', '')}")
@@ -595,7 +602,7 @@ def clean_results(results_dir: Path) -> None:
 
 
 def _normalize_backend(backend: str | None) -> str:
-    backend = (backend or "mock").replace("-", "_").lower()
+    backend = (backend or "vllm").replace("-", "_").lower()
     if backend == "openai":
         return "openai_compatible"
     return backend

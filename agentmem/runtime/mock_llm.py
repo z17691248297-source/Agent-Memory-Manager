@@ -9,6 +9,8 @@ from agentmem.memory.memory_object import estimate_tokens
 class MockLLMClient:
     """无模型、无 GPU 环境下的固定响应后端。"""
 
+    model = "local-test"
+
     def chat(
         self,
         messages: list[dict[str, str]],
@@ -20,7 +22,7 @@ class MockLLMClient:
         prompt_tokens = estimate_tokens(prompt)
         lower_prompt = prompt.lower()
 
-        # Keep mock answers deterministic while exposing the same signals that
+        # Keep test answers deterministic while exposing the same signals that
         # task evaluators check on a real backend.
         if "constraint_alpha_001" in lower_prompt:
             content = "constraint_alpha_001：AgentMem 必须优先进行工具结果外置，并保留任务成功率。"
@@ -45,7 +47,7 @@ class MockLLMClient:
             content = "已根据当前上下文生成简要回答。"
         payload = {
             "assistant_response": content,
-            "next_action": None,
+            "next_action": _next_action(prompt),
             "memory_delta": _memory_delta(prompt, content),
         }
         output = json.dumps(payload, ensure_ascii=False)
@@ -54,6 +56,7 @@ class MockLLMClient:
             "content": output,
             "latency": time.perf_counter() - start,
             "ttft": 0.0,
+            "model": self.model,
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": prompt_tokens + completion_tokens,
@@ -65,12 +68,12 @@ def _memory_delta(prompt: str, content: str) -> dict:
     facts = []
     lower = prompt.lower()
     for token in _interesting_phrases(prompt):
-        facts.append({"content": token, "source": "mock_llm", "confidence": 0.8, "importance": 0.7})
+        facts.append({"content": token, "source": "local_test_llm", "confidence": 0.8, "importance": 0.7})
     if "result_id" in lower or "tool" in lower or "工具" in prompt:
-        facts.append({"content": "工具结果应通过 result_id 和 artifact reference 管理", "source": "mock_llm", "confidence": 0.8, "importance": 0.7})
+        facts.append({"content": "工具结果应通过 result_id 和 artifact reference 管理", "source": "local_test_llm", "confidence": 0.8, "importance": 0.7})
     decisions = []
     if any(word in content for word in ["结论", "建议", "必须"]):
-        decisions.append({"content": content[:240], "reason": "assistant response", "confidence": 0.75, "source": "mock_llm"})
+        decisions.append({"content": content[:240], "reason": "assistant response", "confidence": 0.75, "source": "local_test_llm"})
     return {
         "goals": _goals(prompt),
         "constraints": _constraints(prompt),
@@ -82,6 +85,30 @@ def _memory_delta(prompt: str, content: str) -> dict:
         "tool_summaries": [],
         "warnings": [],
     }
+
+
+def _next_action(prompt: str) -> dict | None:
+    lower = prompt.lower()
+    intent = _intent_text(prompt)
+    lower_intent = intent.lower()
+    has_artifact = "result_id:" in lower or "artifact references:" in lower and "result_id=" in lower
+    if has_artifact:
+        return None
+    if "## calculator" in prompt or '"name": "calculator"' in prompt:
+        if "计算" in intent or "calculate" in lower_intent or any(op in intent for op in ["+", "-", "*", "/"]):
+            return {"type": "tool_call", "tool": "calculator", "args": {"input": intent or "calculate requested expression"}}
+    if "## log_analyzer" in prompt or '"name": "log_analyzer"' in prompt:
+        if any(term in lower_intent for term in ["log", "日志", "oom", "timeout", "kv cache"]):
+            return {"type": "tool_call", "tool": "log_analyzer", "args": {"input": intent or "analyze requested log artifact"}}
+    return None
+
+
+def _intent_text(prompt: str) -> str:
+    marker = "Current Query:"
+    if marker in prompt:
+        return prompt.rsplit(marker, 1)[-1].strip()
+    lines = [line.strip() for line in prompt.splitlines() if line.strip()]
+    return lines[-1] if lines else prompt
 
 
 def _goals(prompt: str) -> list[str]:

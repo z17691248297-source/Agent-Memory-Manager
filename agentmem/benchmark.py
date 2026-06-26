@@ -46,6 +46,7 @@ COMMON_FIELDS = [
     "mode",
     "memory_mode",
     "backend",
+    "model",
     "round",
     "stage",
     "prompt_tokens",
@@ -53,6 +54,7 @@ COMMON_FIELDS = [
     "total_tokens",
     "latency",
     "ttft",
+    "tokens_per_second",
     "peak_gpu_memory_mb",
     "success",
     "score",
@@ -138,6 +140,28 @@ PREFIX_CACHE_FIELDS = [
     "kv_cache_usage",
 ]
 
+VLLM_BENCHMARK_FIELDS = [
+    "scenario",
+    "mode",
+    "memory_mode",
+    "backend",
+    "model",
+    "round",
+    "stage",
+    "prompt_tokens",
+    "output_tokens",
+    "total_tokens",
+    "latency",
+    "ttft",
+    "tokens_per_second",
+    "peak_gpu_memory_mb",
+    "success",
+    "score",
+    "prefix_cache_hit_rate",
+    "cached_prompt_tokens",
+    "kv_cache_usage",
+]
+
 ABLATION_FIELDS = [
     "scenario",
     "task_id",
@@ -172,7 +196,7 @@ ABLATION_FIELDS = [
 class BenchmarkOptions:
     scenario: str = "all"
     mode: str = "both"
-    backend: str = "mock"
+    backend: str = "vllm"
     repeat: int = 1
     output_dir: Path = PROJECT_ROOT / "results"
     config_path: Path = PROJECT_ROOT / "configs" / "config.yaml"
@@ -203,11 +227,14 @@ def run_benchmark(options: BenchmarkOptions) -> dict[str, Any]:
             elif scenario == "multi-stage":
                 paths.extend(_run_multi_stage(options.config_path, output_dir, backend, options.mode, repeat))
             elif scenario == "branching":
-                paths.extend(_run_branching(output_dir, backend, options.mode, repeat))
+                paths.extend(_run_branching(options.config_path, output_dir, backend, options.mode, repeat))
             elif scenario == "prefix-cache":
                 paths.extend(_run_prefix_cache(options.config_path, output_dir, backend, options.mode, repeat))
             elif scenario == "ablation":
                 paths.append(_run_ablation(options.config_path, output_dir, backend))
+
+    if backend == "vllm":
+        paths.append(_write_vllm_benchmark(output_dir))
 
     report_paths = summarize_results(output_dir, options.config_path)
     return {
@@ -289,6 +316,15 @@ def _run_long_session(
         path = output_dir / f"long_session_{memory_mode}.csv"
         _write_csv(path, rows, LONG_SESSION_FIELDS)
         paths.append(path)
+    paths.extend(
+        _write_mode_aliases(
+            output_dir,
+            {
+                "long_session_full_history.csv": "long_session_baseline.csv",
+                "long_session_event_sourced_memory.csv": "long_session_optimized.csv",
+            },
+        )
+    )
     return paths
 
 
@@ -337,10 +373,19 @@ def _run_multi_stage(
         path = output_dir / f"multi_stage_{memory_mode}.csv"
         _write_csv(path, rows, MULTI_STAGE_FIELDS)
         paths.append(path)
+    paths.extend(
+        _write_mode_aliases(
+            output_dir,
+            {
+                "multi_stage_full_history.csv": "multi_stage_baseline.csv",
+                "multi_stage_event_sourced_memory.csv": "multi_stage_optimized.csv",
+            },
+        )
+    )
     return paths
 
 
-def _run_branching(output_dir: Path, backend: str, mode: str, repeat: int) -> list[Path]:
+def _run_branching(config_path: Path, output_dir: Path, backend: str, mode: str, repeat: int) -> list[Path]:
     tasks, workload = _load_tasks("branching")
     paths: list[Path] = []
     combined_rows: list[dict[str, Any]] = []
@@ -350,7 +395,7 @@ def _run_branching(output_dir: Path, backend: str, mode: str, repeat: int) -> li
         for _ in range(repeat):
             for task in tasks:
                 for branch_count in task.get("branch_counts") or [2, 4, 8]:
-                    rows.append(_branch_row(task, workload, int(branch_count), memory_mode, backend))
+                    rows.append(_branch_row(task, workload, int(branch_count), memory_mode, backend, config_path))
         path = output_dir / f"branching_{memory_mode}.csv"
         _write_csv(path, rows, BRANCHING_FIELDS)
         paths.append(path)
@@ -372,35 +417,31 @@ def _run_prefix_cache(
     paths: list[Path] = []
     config = load_runtime_config(config_path)
     metrics_url = str(dict(config.get("vllm") or {}).get("metrics_url", "http://localhost:8000/metrics"))
-    all_rows: list[dict[str, Any]] = []
 
     for memory_mode in _selected_modes(mode):
         rows = []
         total_rounds = repeat * 6
         for round_index in range(1, total_rounds + 1):
             prompt, stable_prefix = _prefix_cache_prompt(memory_mode, round_index)
-            if backend == "mock":
-                prompt_tokens = estimate_tokens(prompt)
-                output_tokens = 0
-                total_tokens = prompt_tokens
-                latency = _simulated_latency(prompt_tokens, memory_mode)
-                ttft = latency * 0.45
-                vllm_metrics = dict(DEFAULT_VLLM_METRICS)
-            else:
-                response = _call_prompt(config_path, prompt)
-                prompt_tokens = response["prompt_tokens"]
-                output_tokens = response.get("completion_tokens", 0)
-                total_tokens = response.get("total_tokens", prompt_tokens + output_tokens)
-                latency = response["latency"]
-                ttft = response.get("ttft", -1)
-                vllm_metrics = fetch_vllm_metrics(metrics_url) if backend == "vllm" else dict(DEFAULT_VLLM_METRICS)
+            response = _safe_call_prompt(config_path, prompt)
+            prompt_tokens = response["prompt_tokens"]
+            output_tokens = response.get("completion_tokens", 0)
+            total_tokens = response.get("total_tokens", prompt_tokens + output_tokens)
+            latency = response["latency"]
+            ttft = response.get("ttft", -1)
+            tokens_per_second = response.get("tokens_per_second", -1)
+            model = response.get("model", "")
+            vllm_metrics = fetch_vllm_metrics(metrics_url) if backend == "vllm" else dict(DEFAULT_VLLM_METRICS)
+            llm_error = response.get("error", "")
 
             row = {
                 "scenario": "prefix-cache",
                 "task_id": f"prefix_cache_round_{round_index:02d}",
                 "workload_file": "metric:prefix-cache",
                 "mode": memory_mode,
+                "memory_mode": memory_mode,
                 "backend": backend,
+                "model": model,
                 "round": round_index,
                 "stage": "prefix_cache",
                 "stable_prefix_hash": hash_text(stable_prefix)[:16],
@@ -410,7 +451,9 @@ def _run_prefix_cache(
                 "total_tokens": total_tokens,
                 "latency": latency,
                 "ttft": ttft,
+                "tokens_per_second": tokens_per_second,
                 "peak_gpu_memory_mb": get_peak_gpu_memory_mb(),
+                "failure_reason": llm_error,
                 **vllm_metrics,
             }
             rows.append(row)
@@ -422,6 +465,7 @@ def _run_prefix_cache(
                 evaluation_fields(
                     evaluate_metric_checks(
                         {
+                            "llm_call_success": not row.get("failure_reason"),
                             "prompt_tokens_positive": _to_float(row["prompt_tokens"]) > 0,
                             "stable_prefix_hash_present": bool(row["stable_prefix_hash"]),
                             "expected_prefix_pattern": unique_hashes == 1 if memory_mode == "optimized" else unique_hashes > 1,
@@ -433,12 +477,7 @@ def _run_prefix_cache(
         rows = [_select_fields(row, PREFIX_CACHE_FIELDS, default=-1) for row in rows]
         _write_csv(path, rows, PREFIX_CACHE_FIELDS)
         paths.append(path)
-        all_rows.extend(rows)
 
-    if backend == "vllm":
-        vllm_path = output_dir / "vllm_benchmark.csv"
-        _write_csv(vllm_path, all_rows, PREFIX_CACHE_FIELDS)
-        paths.append(vllm_path)
     return paths
 
 
@@ -547,17 +586,12 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
     for item in variants:
         prompt = "\n\n".join(item["parts"])
         prompt_tokens = estimate_tokens(prompt)
-        if backend == "mock":
-            latency = _simulated_latency(prompt_tokens, "optimized" if item["variant"] == "full_optimized" else "baseline")
-            ttft = latency * 0.45
-            output_tokens = 0
-            total_tokens = prompt_tokens
-        else:
-            response = _call_prompt(config_path, prompt)
-            latency = response["latency"]
-            ttft = response.get("ttft", -1)
-            output_tokens = response.get("completion_tokens", 0)
-            total_tokens = response.get("total_tokens", prompt_tokens + output_tokens)
+        response = _safe_call_prompt(config_path, prompt)
+        latency = response["latency"]
+        ttft = response.get("ttft", -1)
+        output_tokens = response.get("completion_tokens", 0)
+        total_tokens = response.get("total_tokens", prompt_tokens + output_tokens)
+        llm_error = response.get("error", "")
         row = {
             "scenario": "ablation",
             "task_id": "ablation_log_context",
@@ -570,6 +604,7 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
             "total_tokens": total_tokens,
             "latency": latency,
             "ttft": ttft,
+            "failure_reason": llm_error,
             "peak_gpu_memory_mb": get_peak_gpu_memory_mb(),
             "raw_tool_tokens": result.raw_token_len,
             "injected_tool_tokens": item["injected_tool_tokens"],
@@ -594,6 +629,7 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
 
 def _build_benchmark_agent(config_path: Path, output_dir: Path, memory_mode: str) -> AgentRuntime:
     config = load_runtime_config(config_path)
+    agent_config = dict(config.get("agent") or {})
     registry = build_default_registry(PROJECT_ROOT / "skills")
     store = ToolResultStore(output_dir / "tool_store", raw_store_max_mb=_raw_store_max_mb(config))
     if memory_mode in {"baseline", "full_history"}:
@@ -623,11 +659,14 @@ def _build_benchmark_agent(config_path: Path, output_dir: Path, memory_mode: str
         )
     else:
         raise ValueError(f"unsupported memory_mode: {memory_mode}")
+    enable_loop = bool(agent_config.get("enable_next_action_loop", True)) and memory_mode in {"optimized", "event_sourced_memory"}
     return AgentRuntime(
         memory=memory,
         tools=registry,
         llm_client=build_llm_client(config_path),
         tool_executor=ToolExecutor(registry, store),
+        max_steps=int(agent_config.get("max_steps", 3)),
+        enable_next_action_loop=enable_loop,
     )
 
 
@@ -642,7 +681,7 @@ def _raw_store_max_mb(config: dict[str, Any]) -> float | None:
     return parsed if parsed > 0 else None
 
 
-def _branch_row(task: dict[str, Any], workload: Path, branch_count: int, mode: str, backend: str) -> dict[str, Any]:
+def _branch_row(task: dict[str, Any], workload: Path, branch_count: int, mode: str, backend: str, config_path: Path) -> dict[str, Any]:
     start = time.perf_counter()
     shared_context = (
         str(task["input"])
@@ -677,20 +716,33 @@ def _branch_row(task: dict[str, Any], workload: Path, branch_count: int, mode: s
         branch_saving_ratio = 0.0
         prompt_tokens = duplicated_context_tokens
 
+    response = _safe_call_prompt(config_path, "\n\n".join([shared_context[:4000], branch_text, str(task["input"])]))
+    latency = response["latency"]
+    ttft = response.get("ttft", -1)
+    output_tokens = response.get("completion_tokens", estimate_tokens(branch_text))
+    total_tokens = response.get("total_tokens", prompt_tokens + output_tokens)
+    tokens_per_second = response.get("tokens_per_second", -1)
+    model = response.get("model", "")
+    llm_error = response.get("error", "")
+
     row = {
         "scenario": "branching",
         "task_id": task["task_id"],
         "workload_file": _relative_path(workload),
         "mode": mode,
+        "memory_mode": mode,
         "backend": backend,
+        "model": model,
         "round": branch_count,
         "stage": "branching",
         "prompt_tokens": prompt_tokens,
-        "output_tokens": estimate_tokens(branch_text),
-        "total_tokens": prompt_tokens + estimate_tokens(branch_text),
-        "latency": time.perf_counter() - start,
-        "ttft": 0.0,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+        "latency": latency,
+        "ttft": ttft,
+        "tokens_per_second": tokens_per_second,
         "peak_gpu_memory_mb": get_peak_gpu_memory_mb(),
+        "failure_reason": llm_error,
         "branch_count": branch_count,
         "shared_context_tokens": shared_tokens,
         "branch_delta_tokens": delta_tokens,
@@ -699,7 +751,7 @@ def _branch_row(task: dict[str, Any], workload: Path, branch_count: int, mode: s
         "branch_saving_ratio": branch_saving_ratio,
         "branch_answer_tokens": estimate_tokens(branch_text),
     }
-    result = evaluate_task(task, branch_text, row, context={"branch_text": branch_text, "branch_count": branch_count})
+    result = evaluate_task(task, "" if llm_error else branch_text, row, context={"branch_text": branch_text, "branch_count": branch_count})
     row.update(evaluation_fields(result))
     return _select_fields(row, BRANCHING_FIELDS, default=-1)
 
@@ -743,6 +795,24 @@ def _prefix_cache_prompt(mode: str, round_index: int) -> tuple[str, str]:
 def _call_prompt(config_path: Path, prompt: str) -> dict[str, Any]:
     client = build_llm_client(config_path)
     return client.chat([{"role": "user", "content": prompt}])
+
+
+def _safe_call_prompt(config_path: Path, prompt: str) -> dict[str, Any]:
+    try:
+        return _call_prompt(config_path, prompt)
+    except RuntimeError as exc:
+        prompt_tokens = estimate_tokens(prompt)
+        return {
+            "content": "",
+            "latency": 0.0,
+            "ttft": -1,
+            "model": "",
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": 0,
+            "total_tokens": prompt_tokens,
+            "tokens_per_second": -1,
+            "error": str(exc),
+        }
 
 
 def _load_tasks(scenario: str) -> tuple[list[dict[str, Any]], Path]:
@@ -800,6 +870,8 @@ def _row_from_metrics(
     }
     row.setdefault("output_tokens", metrics.get("output_tokens", -1))
     row.setdefault("total_tokens", metrics.get("total_tokens", -1))
+    row.setdefault("model", metrics.get("model", ""))
+    row.setdefault("tokens_per_second", metrics.get("tokens_per_second", -1))
     row.setdefault("full_history_tokens", metrics.get("full_history_tokens", metrics.get("history_tokens", -1)))
     row.setdefault("state_view_tokens", metrics.get("state_view_tokens", 0))
     row.setdefault("event_count", metrics.get("event_count", 0))
@@ -916,9 +988,37 @@ def _write_csv(path: Path, rows: Iterable[dict[str, Any]], fieldnames: list[str]
         writer.writerows(rows)
 
 
-def _simulated_latency(prompt_tokens: int, mode: str) -> float:
-    multiplier = 0.000012 if mode == "optimized" else 0.000018
-    return round(0.01 + prompt_tokens * multiplier, 6)
+def _write_vllm_benchmark(output_dir: Path) -> Path:
+    rows: list[dict[str, Any]] = []
+    for path in sorted(output_dir.glob("*.csv")):
+        if path.name in {"summary.csv", "vllm_benchmark.csv"}:
+            continue
+        for row in _read_csv_rows(path):
+            if row.get("backend") != "vllm":
+                continue
+            rows.append(_select_fields(row, VLLM_BENCHMARK_FIELDS, default=-1))
+    vllm_path = output_dir / "vllm_benchmark.csv"
+    _write_csv(vllm_path, rows, VLLM_BENCHMARK_FIELDS)
+    return vllm_path
+
+
+def _write_mode_aliases(output_dir: Path, aliases: dict[str, str]) -> list[Path]:
+    paths: list[Path] = []
+    for source_name, target_name in aliases.items():
+        source = output_dir / source_name
+        target = output_dir / target_name
+        if not source.exists():
+            continue
+        target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+        paths.append(target)
+    return paths
+
+
+def _read_csv_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    with path.open(newline="", encoding="utf-8") as file:
+        return list(csv.DictReader(file))
 
 
 def _resolve_output_dir(output_dir: Path) -> Path:

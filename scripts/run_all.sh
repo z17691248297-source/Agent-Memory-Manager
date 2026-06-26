@@ -17,12 +17,12 @@ fi
 
 bash scripts/clean_results.sh
 
-"${PYTHON_BIN}" -m agentmem benchmark --scenario tool-heavy --backend mock --output results
-"${PYTHON_BIN}" -m agentmem benchmark --scenario long-session --backend mock --output results
-"${PYTHON_BIN}" -m agentmem benchmark --scenario multi-stage --backend mock --output results
-"${PYTHON_BIN}" -m agentmem benchmark --scenario branching --backend mock --output results
-"${PYTHON_BIN}" -m agentmem benchmark --scenario prefix-cache --backend mock --output results
-"${PYTHON_BIN}" -m agentmem benchmark --scenario ablation --backend mock --output results
+"${PYTHON_BIN}" -m agentmem benchmark --scenario tool-heavy --output results
+"${PYTHON_BIN}" -m agentmem benchmark --scenario long-session --output results
+"${PYTHON_BIN}" -m agentmem benchmark --scenario multi-stage --output results
+"${PYTHON_BIN}" -m agentmem benchmark --scenario branching --output results
+"${PYTHON_BIN}" -m agentmem benchmark --scenario prefix-cache --output results
+"${PYTHON_BIN}" -m agentmem benchmark --scenario ablation --output results
 "${PYTHON_BIN}" -m agentmem report --results-dir results
 
 echo "All benchmark results are under: ${ROOT_DIR}/results"

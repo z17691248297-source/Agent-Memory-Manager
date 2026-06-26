@@ -6,9 +6,7 @@ import json
 from agentmem.cli import main
 
 
-def test_direct_prompt_shorthand_runs_tool(tmp_path, capsys, monkeypatch) -> None:
-    monkeypatch.setenv("AGENTMEM_LLM_BACKEND", "mock")
-
+def test_direct_prompt_shorthand_runs_tool(tmp_path, capsys, local_llm) -> None:
     code = main(
         [
             "--stage",
@@ -25,8 +23,7 @@ def test_direct_prompt_shorthand_runs_tool(tmp_path, capsys, monkeypatch) -> Non
     assert "prompt_tokens:" in output
 
 
-def test_eval_writes_metrics_csv(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("AGENTMEM_LLM_BACKEND", "mock")
+def test_eval_writes_metrics_csv(tmp_path, local_llm) -> None:
     workload = tmp_path / "workload.jsonl"
     workload.write_text(
         '{"input": "请计算 1 + 2。", "stage": "tool_calling", "expected_tools": ["calculator"]}\n',
@@ -52,9 +49,7 @@ def test_eval_writes_metrics_csv(tmp_path, monkeypatch) -> None:
     assert rows[0]["tool_names"] == "calculator"
 
 
-def test_tools_and_results_commands(tmp_path, capsys, monkeypatch) -> None:
-    monkeypatch.setenv("AGENTMEM_LLM_BACKEND", "mock")
-
+def test_tools_and_results_commands(tmp_path, capsys, local_llm) -> None:
     assert main(["tools", "--json"]) == 0
     tools = json.loads(capsys.readouterr().out)
     assert any(tool["name"] == "calculator" for tool in tools)
