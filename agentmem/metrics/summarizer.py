@@ -4,7 +4,7 @@ import csv
 from pathlib import Path
 from typing import Any
 
-from agentmem.metrics.hardware import collect_hardware_info
+from agentmem.metrics.hardware import collect_hardware_info, collect_os_environment
 from agentmem.runtime.factory import PROJECT_ROOT
 from agentmem.runtime.llm_factory import load_runtime_config
 
@@ -119,8 +119,10 @@ def _build_summary_rows(results: Path) -> Rows:
 
 def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
     llm = dict(config.get("llm") or {})
+    extractor = dict(config.get("extractor") or {})
     memory = dict(config.get("memory") or {})
     benchmark = dict(config.get("benchmark") or {})
+    environment = dict(config.get("environment") or {})
     backend = _detect_backend(frames, str(llm.get("backend", "vllm")))
     scenarios = [name for name, rows in frames.items() if rows]
     all_modes = {str(row.get("mode")) for rows in frames.values() for row in rows if row.get("mode")}
@@ -133,6 +135,7 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
     }
     modes = sorted(mode for mode in all_modes if mode in preferred_modes) or sorted(all_modes)
     hardware = collect_hardware_info()
+    os_environment = collect_os_environment()
 
     parts = [
         "# AgentMem Benchmark Report",
@@ -143,7 +146,7 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
         "",
         "## 2. 实验设置",
         "",
-        _settings_table(backend, llm, memory, benchmark, scenarios, modes),
+        _settings_table(backend, llm, extractor, memory, benchmark, environment, os_environment, frames, scenarios, modes),
         "",
         "## 3. 系统架构",
         "",
@@ -161,13 +164,9 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
         "",
         _success_score_section(frames),
         "",
-        "## Mock Backend Results",
+        "## Configured Model Backend Results",
         "",
-        _backend_results_section(frames, "mock"),
-        "",
-        "## vLLM Backend Results",
-        "",
-        _backend_results_section(frames, "vllm"),
+        _backend_results_section(frames, backend),
         "",
         "## 7. Tool-heavy 结果",
         "",
@@ -222,8 +221,12 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
 def _settings_table(
     backend: str,
     llm: dict[str, Any],
+    extractor: dict[str, Any],
     memory: dict[str, Any],
     benchmark: dict[str, Any],
+    environment: dict[str, Any],
+    os_environment: dict[str, Any],
+    frames: dict[str, Rows],
     scenarios: list[str],
     modes: list[str],
 ) -> str:
@@ -235,9 +238,26 @@ def _settings_table(
     ]
     if bool(memory.get("enable_tool_externalization", True)):
         optimizations.append("tool_externalization")
+    extractor_stats = _extractor_stats(frames, bool(extractor.get("enabled")))
     rows = [
         {"item": "backend", "value": backend},
         {"item": "model", "value": _display_model(backend, llm)},
+        {"item": "client_os", "value": os_environment.get("client_os", "")},
+        {"item": "client_environment", "value": os_environment.get("client_environment", "")},
+        {"item": "model_server_os", "value": environment.get("model_server_os", "unknown")},
+        {"item": "official_os_compatibility_run", "value": os_environment.get("official_os_compatibility_run", False)},
+        {"item": "note", "value": os_environment.get("note", "")},
+        {"item": "main_llm_backend", "value": llm.get("backend", backend)},
+        {"item": "main_llm_base_url", "value": llm.get("base_url", "")},
+        {"item": "main_llm_max_model_len", "value": environment.get("main_llm_max_model_len", "unknown")},
+        {"item": "extractor_backend", "value": extractor.get("backend", "disabled") if extractor.get("enabled") else "disabled"},
+        {"item": "extractor_model", "value": extractor.get("model", "") if extractor.get("enabled") else ""},
+        {"item": "extractor_base_url", "value": extractor.get("base_url", "") if extractor.get("enabled") else ""},
+        {"item": "extractor_enabled", "value": extractor_stats["enabled"]},
+        {"item": "extractor_effective", "value": extractor_stats["effective"]},
+        {"item": "extractor_status", "value": extractor_stats["status"]},
+        {"item": "extractor_success_count", "value": extractor_stats["success_count"]},
+        {"item": "extractor_failure_count", "value": extractor_stats["failure_count"]},
         {"item": "scenarios", "value": ", ".join(scenarios) if scenarios else "none"},
         {"item": "mode", "value": ", ".join(modes) if modes else "none"},
         {"item": "repeat", "value": benchmark.get("repeat", "")},
@@ -249,6 +269,28 @@ def _settings_table(
 
 def _display_model(backend: str, llm: dict[str, Any]) -> str:
     return str(llm.get("model", ""))
+
+
+def _extractor_stats(frames: dict[str, Rows], enabled: bool) -> dict[str, Any]:
+    rows = [row for frame in frames.values() for row in frame]
+    success_count = int(sum(_to_float(row.get("extractor_success_count"), 0) for row in rows))
+    failure_count = int(sum(_to_float(row.get("extractor_failure_count"), 0) for row in rows))
+    effective = success_count > 0
+    if not enabled:
+        status = "disabled"
+    elif effective:
+        status = "active"
+    elif failure_count > 0:
+        status = "fallback"
+    else:
+        status = "unavailable"
+    return {
+        "enabled": enabled,
+        "effective": effective,
+        "status": status,
+        "success_count": success_count,
+        "failure_count": failure_count,
+    }
 
 
 def _workload_section(frames: dict[str, Rows]) -> str:
@@ -281,7 +323,7 @@ def _architecture_section() -> str:
             "",
             "- AgentRuntime：负责多轮输入、轻量 next_action loop、工具执行、LLM 调用和指标采集。",
             "- Event-Sourced Memory：记录 user_message、tool_call、tool_result、assistant_response、memory_delta、final_answer、metric 等事件。",
-            "- memory_delta：Agent 在同一次模型响应中主动写入 goals、constraints、facts、decisions、open_questions、todos、artifact_refs、tool_summaries 和 warnings。",
+            "- memory_delta：主模型响应中可主动写入 goals、constraints、facts、decisions、open_questions、todos、artifact_refs、tool_summaries 和 warnings；未稳定输出时，可选 extractor 只生成同一结构化状态更新，不生成最终回答。",
             "- Task State View：Memory Manager 从事件流投影出的结构化状态，prompt 渲染 Task State View、Artifact References、Recent Context 和 Current Query。",
             "- Tool Store：工具 raw output 保存在 results/tool_store/raw/，prompt 只引用 result_id、summary 和 artifact metadata。",
             "- Stable Renderer：保持 prompt 结构稳定，为 vLLM prefix cache 复用创造条件。",
@@ -331,8 +373,9 @@ def _limitations_section() -> str:
     return "\n".join(
         [
             "- vLLM 指标依赖服务端版本和 /metrics 暴露情况；缺失时报告为 -1。",
+            "- 当前记录的 8000 主模型服务 max_model_len 可能为 4096；tool-heavy 16K workload 需要 16K 主模型服务才能让 baseline 正常推理。",
             "- 当前 next_action loop 是轻量实现，覆盖工具调用和有限多步决策，不是完整 AutoGPT。",
-            "- Event-Sourced Memory 依赖模型按协议输出 memory_delta；非法 JSON 会 fallback 为普通回答。",
+            "- Event-Sourced Memory 优先使用主模型按协议输出的 memory_delta；extractor 失败或非法 JSON 时 fallback 到空 memory_delta / 既有 rule-based path，benchmark 不崩溃。",
             "- 本项目不修改 vLLM kernel，不声称实现底层 KV block sharing。",
         ]
     )
@@ -465,7 +508,7 @@ def _event_memory_section(frames: dict[str, Rows]) -> str:
     token_reduction = _mode_reduction_between(combined, "full_history", "event_sourced_memory", "prompt_tokens")
     retention_delta = _mode_delta(combined, "summary_memory", "event_sourced_memory", "early_fact_retention")
     conclusions = [
-        "方法说明：Event Log 记录 Agent 执行事件；模型在同一次响应中输出 memory_delta；Memory Manager 将 goals、constraints、facts、decisions、todos 和 artifact_refs 合并为 Task State View；Renderer 只渲染状态视图、artifact metadata 和最近上下文。",
+        "方法说明：Event Log 记录 Agent 执行事件；主模型响应可输出 memory_delta；当主模型未稳定输出时，可选 extractor 只生成同 schema 的结构化 memory_delta。Memory Manager 将 goals、constraints、facts、decisions、todos 和 artifact_refs 合并为 Task State View；Renderer 只渲染状态视图、artifact metadata 和最近上下文。",
         "对比口径：full_history 注入完整历史和工具结果；summary_memory 使用工具外置和历史摘要；event_sourced_memory 使用模型产生的 memory_delta、artifact_refs 和 Task State View。Benchmark evaluator 可以按任务检查 required_facts，但 Memory 核心不写死任务关键词。",
         _markdown_table(
             rows,

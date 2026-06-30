@@ -1,0 +1,47 @@
+{
+  "result_id": "calculator_814ddbc994c5",
+  "tool_name": "calculator",
+  "status": "success",
+  "raw_result": "",
+  "summary": "表达式: 20 * 128 + 64 结果: 2624.0",
+  "raw_token_len": 8,
+  "summary_token_len": 8,
+  "raw_path": "/home/zb/vllm/results/tool_store/raw/calculator_814ddbc994c5.txt",
+  "chunks": [
+    {
+      "chunk_id": 0,
+      "result_id": "calculator_814ddbc994c5",
+      "path": "/home/zb/vllm/results/tool_store/chunks/calculator_814ddbc994c5_chunk_0.txt",
+      "start_line": 1,
+      "end_line": 2,
+      "char_len": 29,
+      "token_count": 8,
+      "token_len": 8,
+      "tags": [],
+      "signatures": [],
+      "summary": "表达式: 20 * 128 + 64 结果: 2624.0"
+    }
+  ],
+  "latency": 0.0005131980005899095,
+  "error": null,
+  "metadata": {
+    "permission_level": "compute_only",
+    "cache_hit": false,
+    "input_hash": "ceaeb67297398bbd4a16bd6879b909599ccd4c712b5ca0114544c5de29021143",
+    "display_truncated": false,
+    "display_max_output_chars": 2000,
+    "raw_store_truncated": false,
+    "raw_store_max_mb": null,
+    "tool_compression_ratio": 1.0
+  },
+  "artifacts": [
+    {
+      "result_id": "calculator_814ddbc994c5",
+      "tool_name": "calculator",
+      "artifact_type": "text",
+      "path": "/home/zb/vllm/results/tool_store/raw/calculator_814ddbc994c5.txt",
+      "token_count": 8,
+      "description": "表达式: 20 * 128 + 64 结果: 2624.0"
+    }
+  ]
+}

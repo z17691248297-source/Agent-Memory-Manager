@@ -21,6 +21,8 @@ class OpenAICompatibleClient:
         max_tokens: int = 512,
         timeout: float = 120,
         stream: bool = False,
+        max_retries: int = 2,
+        extra_body: dict[str, Any] | None = None,
     ) -> None:
         self.base_url = base_url
         self.api_key = api_key
@@ -29,6 +31,8 @@ class OpenAICompatibleClient:
         self.max_tokens = max_tokens
         self.timeout = timeout
         self.stream = stream
+        self.max_retries = max(0, int(max_retries))
+        self.extra_body = dict(extra_body or {})
 
     def chat(
         self,
@@ -42,7 +46,12 @@ class OpenAICompatibleClient:
         except ImportError as exc:
             raise RuntimeError("缺少 openai 包，请安装 requirements.txt") from exc
 
-        client = OpenAI(base_url=self.base_url, api_key=self.api_key, timeout=self.timeout)
+        client = OpenAI(
+            base_url=self.base_url,
+            api_key=self.api_key,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
         request_temperature = self.temperature if temperature is None else temperature
         request_max_tokens = self.max_tokens if max_tokens is None else max_tokens
         try:
@@ -59,6 +68,7 @@ class OpenAICompatibleClient:
                 messages=messages,
                 temperature=request_temperature,
                 max_tokens=request_max_tokens,
+                extra_body=self.extra_body or None,
             )
         except Exception as exc:  # noqa: BLE001
             raise RuntimeError(
@@ -89,16 +99,31 @@ class OpenAICompatibleClient:
         max_tokens: int,
         start: float,
     ) -> dict[str, Any]:
+        request_kwargs = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        if self.extra_body:
+            request_kwargs["extra_body"] = self.extra_body
+        if self.base_url:
+            request_kwargs["stream_options"] = {"include_usage": True}
         chunks = client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=True,
+            **request_kwargs,
         )
         first_token_time: float | None = None
         content_parts: list[str] = []
+        usage_prompt_tokens: int | None = None
+        usage_completion_tokens: int | None = None
         for chunk in chunks:
+            usage = getattr(chunk, "usage", None)
+            if usage is not None:
+                usage_prompt_tokens = getattr(usage, "prompt_tokens", None) or usage_prompt_tokens
+                usage_completion_tokens = getattr(usage, "completion_tokens", None) or usage_completion_tokens
+            if not getattr(chunk, "choices", None):
+                continue
             delta = chunk.choices[0].delta
             text = getattr(delta, "content", None) or ""
             if text and first_token_time is None:
@@ -107,8 +132,8 @@ class OpenAICompatibleClient:
                 content_parts.append(text)
         latency = time.perf_counter() - start
         content = "".join(content_parts)
-        prompt_tokens = estimate_tokens(str(messages))
-        completion_tokens = estimate_tokens(content)
+        prompt_tokens = usage_prompt_tokens or estimate_tokens(str(messages))
+        completion_tokens = usage_completion_tokens or estimate_tokens(content)
         return {
             "content": content,
             "latency": latency,

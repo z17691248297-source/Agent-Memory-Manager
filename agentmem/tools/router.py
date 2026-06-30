@@ -16,7 +16,7 @@ class ToolRouter:
 
     RULES: dict[str, list[str]] = {
         "log_analyzer": ["日志", "log", "error", "oom", "timeout", "kv cache", "failed"],
-        "file_reader": ["文件", "file", "读取", "content"],
+        "file_reader": ["读取文件", "读文件", "read file", "file:", "path:", ".txt", ".md", ".py", ".csv", ".log"],
         "calculator": ["计算", "calculate", "加", "减", "乘", "除", "+", "-", "*", "/"],
         "code_analyzer": ["代码", "class", "function", "def", "bug", "todo", "fixme"],
         "csv_analyzer": ["csv", "表格", "统计", "平均值", "列"],

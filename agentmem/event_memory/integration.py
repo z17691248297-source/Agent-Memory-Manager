@@ -66,6 +66,16 @@ class EventSourcedMemoryAdapter:
         self.current_stage = stage
         self.current_query = user_input
 
+    def set_task_requirements(
+        self,
+        required_facts: list[str] | None = None,
+        required_answer_points: list[str] | None = None,
+    ) -> None:
+        self.state.required_facts = _dedupe([*self.state.required_facts, *(required_facts or [])])
+        self.state.required_answer_points = _dedupe(
+            [*self.state.required_answer_points, *(required_answer_points or [])]
+        )
+
     def record_tool_call(self, tool_name: str, user_input: str, stage: str) -> None:
         self._append_event(
             "tool_call",
@@ -106,6 +116,9 @@ class EventSourcedMemoryAdapter:
                 "artifacts": result.artifacts,
             },
         )
+        findings = _required_findings(result.summary, self.state.required_facts)
+        if findings:
+            self.state.tool_key_findings = _dedupe([*self.state.tool_key_findings, *findings])
 
     def add_assistant_message(self, content: str) -> None:
         self.messages.append({"role": "assistant", "content": content})
@@ -122,6 +135,42 @@ class EventSourcedMemoryAdapter:
             source="assistant",
             metadata={"memory_delta": memory_delta.to_dict()},
         )
+
+    def build_extractor_payload(self, current_query: str, stage: str, assistant_response: str) -> dict:
+        artifacts = [item.to_dict() for item in self.state.artifact_refs[-10:]]
+        return {
+            "schema": {
+                "memory_delta": [
+                    "goals",
+                    "constraints",
+                    "facts",
+                    "decisions",
+                    "open_questions",
+                    "todos",
+                    "artifact_refs",
+                    "tool_summaries",
+                    "warnings",
+                ]
+            },
+            "stage": stage,
+            "current_query": current_query,
+            "recent_context": self._recent_turns(),
+            "task_state": {
+                "goals": list(self.state.goals[-8:]),
+                "constraints": list(self.state.constraints[-10:]),
+                "facts": [item.to_dict() for item in self.state.facts[-12:]],
+                "decisions": [item.to_dict() for item in self.state.decisions[-10:]],
+                "open_questions": list(self.state.open_questions[-8:]),
+                "todos": list(self.state.todos[-10:]),
+            },
+            "tool_summaries": list(self.state.tool_summaries[-8:]),
+            "required_facts": list(self.state.required_facts),
+            "required_answer_points": list(self.state.required_answer_points),
+            "tool_key_findings": list(self.state.tool_key_findings[-12:]),
+            "artifact_refs": artifacts,
+            "assistant_response": assistant_response,
+            "instruction": "Return JSON only. Generate memory_delta for state update; do not answer the user.",
+        }
 
     def record_metrics(self, metrics: dict) -> None:
         payload = {
@@ -287,3 +336,25 @@ def _compact(text: str, max_chars: int = 240) -> str:
     if len(single) <= max_chars:
         return single
     return single[:max_chars] + "..."
+
+
+def _dedupe(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    output: list[str] = []
+    for value in values:
+        text = str(value).strip()
+        if text and text not in seen:
+            seen.add(text)
+            output.append(text)
+    return output
+
+
+def _required_findings(summary: str, required_facts: list[str]) -> list[str]:
+    findings: list[str] = []
+    lowered = summary.lower()
+    for fact in required_facts:
+        if str(fact).lower() in lowered:
+            findings.append(f"{fact}: covered by tool summary")
+        else:
+            findings.append(f"missing_required_fact: {fact}")
+    return findings

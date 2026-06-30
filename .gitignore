@@ -8,7 +8,7 @@ venv/
 
 # benchmark 运行产物
 benchmarks/results/
-results/
+
 web/node_modules/
 web/dist/
 

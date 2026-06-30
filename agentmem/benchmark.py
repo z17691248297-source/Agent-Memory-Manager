@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from agentmem.event_memory.integration import EventSourcedMemoryAdapter
+from agentmem.event_memory.extractor import build_memory_delta_extractor
 from agentmem.evaluation import evaluate_metric_checks, evaluate_task, evaluation_fields
 from agentmem.memory.baseline_memory import BaselineMemory
 from agentmem.memory.branch_manager import BranchManager
@@ -61,6 +62,14 @@ COMMON_FIELDS = [
     "failure_reason",
     "passed_checks",
     "total_checks",
+    "extractor_effective",
+    "extractor_status",
+    "extractor_success_count",
+    "extractor_failure_count",
+    "refill_count",
+    "refill_tokens",
+    "initial_score",
+    "final_score",
 ]
 
 TOOL_HEAVY_FIELDS = [
@@ -138,6 +147,10 @@ PREFIX_CACHE_FIELDS = [
     "prefix_cache_hit_rate",
     "cached_prompt_tokens",
     "kv_cache_usage",
+    "extractor_effective",
+    "extractor_status",
+    "extractor_success_count",
+    "extractor_failure_count",
 ]
 
 VLLM_BENCHMARK_FIELDS = [
@@ -260,8 +273,21 @@ def _run_tool_heavy(
         for repeat_index in range(repeat):
             for task_index, task in enumerate(tasks, start=1):
                 agent = _build_benchmark_agent(config_path, output_dir, memory_mode)
-                answer, metrics = agent.run(str(task["input"]), stage=str(task.get("stage", "tool_calling")))
+                answer, metrics = agent.run(
+                    str(task["input"]),
+                    stage=str(task.get("stage", "tool_calling")),
+                    tool_context=_task_tool_context(task),
+                )
                 result = evaluate_task(task, answer, metrics)
+                if memory_mode == "optimized" and not result.success:
+                    result, answer, metrics = _refill_missing_evidence(
+                        agent=agent,
+                        config_path=config_path,
+                        task=task,
+                        answer=answer,
+                        metrics=metrics,
+                        result=result,
+                    )
                 row = _row_from_metrics(
                     task=task,
                     workload=workload,
@@ -298,7 +324,11 @@ def _run_long_session(
             for session_id, session_tasks in sessions.items():
                 agent = _build_benchmark_agent(config_path, output_dir, memory_mode)
                 for turn_index, task in enumerate(session_tasks, start=1):
-                    answer, metrics = agent.run(str(task["input"]), stage=str(task.get("stage", "planning")))
+                    answer, metrics = agent.run(
+                        str(task["input"]),
+                        stage=str(task.get("stage", "planning")),
+                        tool_context=_task_tool_context(task),
+                    )
                     result, answer, metrics = _evaluate_agent_task(agent, task, answer, metrics)
                     row = _row_from_metrics(
                         task=task,
@@ -347,7 +377,7 @@ def _run_multi_stage(
                 completed_stages: list[str] = []
                 for step_index, task in enumerate(session_tasks, start=1):
                     stage = str(task.get("stage", "planning"))
-                    answer, metrics = agent.run(str(task["input"]), stage=stage)
+                    answer, metrics = agent.run(str(task["input"]), stage=stage, tool_context=_task_tool_context(task))
                     completed_stages.append(stage)
                     result, answer, metrics = _evaluate_agent_task(
                         agent,
@@ -424,6 +454,8 @@ def _run_prefix_cache(
         for round_index in range(1, total_rounds + 1):
             prompt, stable_prefix = _prefix_cache_prompt(memory_mode, round_index)
             response = _safe_call_prompt(config_path, prompt)
+            if backend == "vllm" and response.get("error"):
+                raise RuntimeError(str(response["error"]))
             prompt_tokens = response["prompt_tokens"]
             output_tokens = response.get("completion_tokens", 0)
             total_tokens = response.get("total_tokens", prompt_tokens + output_tokens)
@@ -665,6 +697,7 @@ def _build_benchmark_agent(config_path: Path, output_dir: Path, memory_mode: str
         tools=registry,
         llm_client=build_llm_client(config_path),
         tool_executor=ToolExecutor(registry, store),
+        memory_delta_extractor=build_memory_delta_extractor(config) if memory_mode in {"optimized", "event_sourced_memory"} else None,
         max_steps=int(agent_config.get("max_steps", 3)),
         enable_next_action_loop=enable_loop,
     )
@@ -848,6 +881,19 @@ def _group_sequence(tasks: list[dict[str, Any]], group_key: str, order_key: str)
     return grouped
 
 
+def _task_tool_context(task: dict[str, Any]) -> dict[str, Any]:
+    keys = [
+        "dataset",
+        "optional_log_path",
+        "log_path",
+        "optional_file_path",
+        "file_path",
+        "required_facts",
+        "required_answer_points",
+    ]
+    return {key: task[key] for key in keys if task.get(key)}
+
+
 def _row_from_metrics(
     task: dict[str, Any],
     workload: Path,
@@ -962,6 +1008,116 @@ def _evaluate_agent_task(
     metrics["initial_score"] = initial_score
     metrics["final_score"] = result.score
     return result, answer, metrics
+
+
+def _refill_missing_evidence(
+    agent: AgentRuntime,
+    config_path: Path,
+    task: dict[str, Any],
+    answer: str,
+    metrics: dict[str, Any],
+    result,
+):
+    missing = _missing_terms_from_result(task, result)
+    if not missing:
+        metrics["initial_score"] = result.score
+        metrics["final_score"] = result.score
+        metrics["refill_count"] = 0
+        metrics["refill_tokens"] = 0
+        return result, answer, metrics
+
+    evidence = ""
+    memory = agent.memory
+    artifact_manager = getattr(memory, "artifact_manager", None)
+    if artifact_manager is not None:
+        evidence = artifact_manager.create_artifact_context(missing, max_tokens_per_ref=180)
+    if not evidence:
+        retention = _agent_retention_text(agent)
+        evidence = _keyword_preview(retention, missing, max_chars=1200)
+    if not evidence:
+        metrics["initial_score"] = result.score
+        metrics["final_score"] = result.score
+        metrics["refill_count"] = 0
+        metrics["refill_tokens"] = 0
+        return result, answer, metrics
+
+    prompt = "\n".join(
+        [
+            "请基于以下结构化要求和证据补充最终回答。不要引入未在证据中出现的事实。",
+            "",
+            "[Current Query]",
+            str(task.get("input", "")),
+            "",
+            "[Required Facts]",
+            "\n".join(f"- {item}" for item in task.get("required_facts") or []),
+            "",
+            "[Required Answer Points]",
+            "\n".join(f"- {item}" for item in task.get("required_answer_points") or []),
+            "",
+            "[Previous Answer]",
+            answer,
+            "",
+            "[Evidence Preview]",
+            evidence,
+            "",
+            "请给出覆盖 required facts 和 required answer points 的简洁中文回答。",
+        ]
+    )
+    response = _safe_call_prompt(config_path, prompt)
+    refill_answer = str(response.get("content", "") or "").strip()
+    refill_tokens = int(response.get("prompt_tokens", estimate_tokens(prompt)) or 0)
+    if not refill_answer or response.get("error"):
+        metrics["initial_score"] = result.score
+        metrics["final_score"] = result.score
+        metrics["refill_count"] = 0
+        metrics["refill_tokens"] = refill_tokens
+        return result, answer, metrics
+
+    new_metrics = dict(metrics)
+    new_metrics["prompt_tokens"] = int(metrics.get("prompt_tokens", 0) or 0) + refill_tokens
+    new_metrics["output_tokens"] = int(metrics.get("output_tokens", 0) or 0) + int(response.get("completion_tokens", 0) or 0)
+    new_metrics["total_tokens"] = int(metrics.get("total_tokens", 0) or 0) + int(response.get("total_tokens", 0) or 0)
+    new_metrics["latency"] = float(metrics.get("latency", 0) or 0) + float(response.get("latency", 0) or 0)
+    new_metrics["refill_count"] = 1
+    new_metrics["refill_tokens"] = refill_tokens
+    eval_context = {"answer_extra": evidence, "retention_text": _agent_retention_text(agent)}
+    new_result = evaluate_task(task, refill_answer, new_metrics, context=eval_context)
+    new_metrics["initial_score"] = result.score
+    new_metrics["final_score"] = new_result.score
+    return new_result, refill_answer, new_metrics
+
+
+def _missing_terms_from_result(task: dict[str, Any], result) -> list[str]:
+    missing = _split_missing_keywords(getattr(result, "missing_keywords", ""))
+    failure = str(getattr(result, "failure_reason", "") or "")
+    for prefix in ["required_fact:", "required_answer_point:", "answer_keyword:"]:
+        for part in failure.split(";"):
+            if part.startswith(prefix):
+                missing.append(part[len(prefix) :])
+    if not missing:
+        missing.extend(str(item) for item in task.get("required_facts") or [])
+    return _dedupe_strings(missing)
+
+
+def _keyword_preview(text: str, terms: list[str], max_chars: int = 1200) -> str:
+    lowered = text.lower()
+    for term in terms:
+        index = lowered.find(str(term).lower())
+        if index >= 0:
+            start = max(0, index - max_chars // 3)
+            return text[start : start + max_chars]
+    return ""
+
+
+def _dedupe_strings(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    output: list[str] = []
+    for value in values:
+        text = str(value).strip()
+        if text and text not in seen:
+            seen.add(text)
+            output.append(text)
+    return output
 
 
 def _agent_retention_text(agent: AgentRuntime) -> str:

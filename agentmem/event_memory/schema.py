@@ -17,6 +17,9 @@ class TaskStateView:
     artifact_refs: list[ArtifactRef] = field(default_factory=list)
     tool_summaries: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    required_facts: list[str] = field(default_factory=list)
+    required_answer_points: list[str] = field(default_factory=list)
+    tool_key_findings: list[str] = field(default_factory=list)
     recent_context: list[str] = field(default_factory=list)
     final_answer: str = ""
     global_state: dict[str, Any] = field(default_factory=dict)
@@ -42,6 +45,9 @@ class TaskStateView:
             artifact_refs=[ArtifactRef(**item) for item in data.get("artifact_refs") or []],
             tool_summaries=list(data.get("tool_summaries") or []),
             warnings=list(data.get("warnings") or []),
+            required_facts=list(data.get("required_facts") or []),
+            required_answer_points=list(data.get("required_answer_points") or []),
+            tool_key_findings=list(data.get("tool_key_findings") or []),
             recent_context=list(data.get("recent_context") or []),
             final_answer=str(data.get("final_answer", "")),
             global_state=dict(data.get("global_state") or {}),

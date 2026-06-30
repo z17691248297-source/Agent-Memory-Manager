@@ -118,7 +118,7 @@ class MemoryDeltaParser:
         else:
             text = str(output or "").strip()
             try:
-                loaded = json.loads(text)
+                loaded = json.loads(_strip_code_fence(text))
                 data = dict(loaded) if isinstance(loaded, dict) else {}
             except json.JSONDecodeError:
                 return ParsedModelOutput(assistant_response=text, next_action=None, memory_delta=MemoryDelta())
@@ -128,7 +128,9 @@ class MemoryDeltaParser:
         next_action = data.get("next_action")
         if not isinstance(next_action, dict):
             next_action = None
-        delta = self._sanitize_delta(MemoryDelta.from_dict(dict(data.get("memory_delta") or {})))
+        raw_delta = data.get("memory_delta")
+        delta_data = _normalize_delta_keys(raw_delta) if isinstance(raw_delta, dict) else {}
+        delta = self._sanitize_delta(MemoryDelta.from_dict(delta_data))
         return ParsedModelOutput(assistant_response=assistant_response, next_action=next_action, memory_delta=delta)
 
     def _sanitize_delta(self, delta: MemoryDelta) -> MemoryDelta:
@@ -238,3 +240,43 @@ def _bounded_float(value: Any, low: float, high: float, default: float) -> float
     except (TypeError, ValueError):
         parsed = default
     return max(low, min(high, parsed))
+
+
+def _strip_code_fence(text: str) -> str:
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+    lines = stripped.splitlines()
+    if lines and lines[0].startswith("```"):
+        lines = lines[1:]
+    if lines and lines[-1].strip().startswith("```"):
+        lines = lines[:-1]
+    return "\n".join(lines).strip()
+
+
+def _normalize_delta_keys(data: dict[str, Any]) -> dict[str, Any]:
+    aliases = {
+        "goal": "goals",
+        "goals": "goals",
+        "constraint": "constraints",
+        "constraints": "constraints",
+        "fact": "facts",
+        "facts": "facts",
+        "decision": "decisions",
+        "decisions": "decisions",
+        "open_question": "open_questions",
+        "open_questions": "open_questions",
+        "todo": "todos",
+        "todos": "todos",
+        "artifact_ref": "artifact_refs",
+        "artifact_refs": "artifact_refs",
+        "tool_summary": "tool_summaries",
+        "tool_summaries": "tool_summaries",
+        "warning": "warnings",
+        "warnings": "warnings",
+    }
+    normalized: dict[str, Any] = {}
+    for key, value in data.items():
+        normalized_key = aliases.get(str(key).strip().lower(), key)
+        normalized[normalized_key] = value
+    return normalized

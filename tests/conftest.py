@@ -12,6 +12,7 @@ def local_llm(monkeypatch):
     def build_local_client(config_path=None):
         return MockLLMClient()
 
+    monkeypatch.setenv("AGENTMEM_EXTRACTOR_ENABLED", "false")
     monkeypatch.setattr("agentmem.runtime.factory.build_llm_client", build_local_client)
     monkeypatch.setattr("agentmem.benchmark.build_llm_client", build_local_client)
     return build_local_client

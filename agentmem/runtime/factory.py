@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from agentmem.event_memory.integration import EventSourcedMemoryAdapter
+from agentmem.event_memory.extractor import build_memory_delta_extractor
 from agentmem.memory.baseline_memory import BaselineMemory
 from agentmem.memory.tool_result_store import ToolResultStore
 from agentmem.runtime.agent import AgentRuntime
@@ -59,6 +60,7 @@ def build_agent(
         tools=registry,
         llm_client=build_llm_client(config_file),
         tool_executor=ToolExecutor(registry, store),
+        memory_delta_extractor=build_memory_delta_extractor(config) if mode == "optimized" else None,
         max_steps=int(agent_config.get("max_steps", 3)),
         enable_next_action_loop=enable_loop,
     )

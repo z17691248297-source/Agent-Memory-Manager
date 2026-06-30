@@ -25,6 +25,13 @@ python -m agentmem report
 bash scripts/run_all.sh
 ```
 
+正式实验前先备份并重建结果目录，避免新旧结果混在一起：
+
+```bash
+mv results results_backup_$(date +%Y%m%d_%H%M%S)
+mkdir results
+```
+
 通用参数：
 
 - `--mode baseline|optimized|both|full_history|summary_memory|event_sourced_memory`
@@ -43,6 +50,10 @@ Benchmark 从 `configs/config.yaml` 读取：
 - `llm.temperature`
 - `llm.max_tokens`
 - `llm.timeout`
+- `extractor.enabled`
+- `extractor.backend`
+- `extractor.base_url`
+- `extractor.model`
 - `vllm.metrics_url`
 
 vLLM backend 会启用 streaming 以测量 TTFT。如果连接失败，CLI 输出：
@@ -98,6 +109,10 @@ prefix-cache 额外记录：
 ### tool-heavy
 
 覆盖工具调用和工具结果外置。baseline 注入 raw output，optimized 保存 artifact 并只渲染 summary/result_id/artifact metadata。
+
+当前 `tool-heavy` 使用 16K 目标 workload：从原始 3000 行日志中保留 required_facts 命中行、前后 3 行上下文，并采样普通日志作为 filler。scenario 名仍是 `tool-heavy`，没有新增 `tool-heavy-16k`。
+
+如果主模型服务以 `--max-model-len 4096` 启动，baseline 超上下文属于部署限制，不应被解释为 16K 实验已通过。16K tool-heavy 需要主 Agent 的 8000 服务支持 16K 或更高上下文。
 
 输出：
 
@@ -187,6 +202,8 @@ python -m agentmem report
 - 项目目标
 - 系统架构
 - Event-Sourced Memory 机制说明
+- extractor backend/model/base_url
+- client OS / client environment / model server OS
 - Benchmark 数据和任务说明
 - baseline vs optimized 对比
 - full_history / summary_memory / event_sourced_memory 对比

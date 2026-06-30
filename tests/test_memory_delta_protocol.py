@@ -40,3 +40,19 @@ def test_memory_delta_parser_fallbacks_on_invalid_json() -> None:
     assert parsed.assistant_response == "plain assistant text"
     assert parsed.next_action is None
     assert parsed.memory_delta.is_empty()
+
+
+def test_memory_delta_parser_ignores_non_object_delta() -> None:
+    parsed = MemoryDeltaParser().parse(
+        json.dumps(
+            {
+                "assistant_response": "ok",
+                "next_action": "final",
+                "memory_delta": ["not", "an", "object"],
+            }
+        )
+    )
+
+    assert parsed.assistant_response == "ok"
+    assert parsed.next_action is None
+    assert parsed.memory_delta.is_empty()

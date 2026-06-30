@@ -1,0 +1,55 @@
+{
+  "run_id": "event_run_1782802947240_96ec1811",
+  "event_count": 10,
+  "round": 3,
+  "state": {
+    "goals": [],
+    "constraints": [
+      "AgentMem 必须优先外置工具结果，并保留任务成功率。"
+    ],
+    "facts": [],
+    "decisions": [],
+    "open_questions": [],
+    "todos": [],
+    "artifact_refs": [],
+    "tool_summaries": [],
+    "warnings": [],
+    "required_facts": [],
+    "required_answer_points": [],
+    "tool_key_findings": [],
+    "recent_context": [
+      "user: 第 1 轮：请记住关键约束 constraint_alpha_001：AgentMem 必须优先外置工具结果，并保留任务成功率。",
+      "assistant: 已记住关键约束 constraint_alpha_001：AgentMem 必须优先外置工具结果，并保留任务成功率。",
+      "user: 第 2 轮：记录约束，baseline 会完整注入工具说明和历史。",
+      "assistant: 已记录约束 constraint_alpha_001：AgentMem 必须优先外置工具结果，并保留任务成功率。baseline 将完整注入工具说明和历史。",
+      "user: 第 3 轮：记录约束，optimized 应该使用工具 brief 和按需 skill。",
+      "assistant: 已记录约束 constraint_alpha_001：AgentMem 必须优先外置工具结果，并保留任务成功率。optimized 版本将使用工具 brief 和按需技能。"
+    ],
+    "final_answer": "",
+    "global_state": {
+      "goal_count": 0,
+      "constraint_count": 1,
+      "fact_count": 0,
+      "decision_count": 0,
+      "artifact_ref_count": 0,
+      "last_updated_round": 3
+    },
+    "stage_state": {
+      "planning": {
+        "stage": "planning",
+        "goals": [],
+        "facts": [],
+        "decisions": [],
+        "artifact_refs": []
+      },
+      "reflection": {
+        "stage": "reflection",
+        "goals": [],
+        "facts": [],
+        "decisions": [],
+        "artifact_refs": []
+      }
+    },
+    "last_updated_round": 3
+  }
+}

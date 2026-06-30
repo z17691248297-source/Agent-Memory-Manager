@@ -66,6 +66,7 @@ def build_llm_client(config_path: str | Path | None = None):
             max_tokens=int(llm_config.get("max_tokens", 512)),
             timeout=float(llm_config.get("timeout", 120)),
             stream=backend == "vllm",
+            max_retries=int(llm_config.get("max_retries", 2)),
         )
 
     raise ValueError(f"不支持的 llm.backend: {backend}")
