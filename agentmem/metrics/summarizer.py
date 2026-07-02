@@ -54,6 +54,8 @@ def _load_frames(results: Path) -> dict[str, Rows]:
         "branching": _read_csv(results / "branch_benchmark.csv"),
         "prefix_cache": _concat_existing(results, ["prefix_cache_baseline.csv", "prefix_cache_optimized.csv"]),
         "ablation": _read_csv(results / "ablation.csv"),
+        "cache_pressure": _read_csv(results / "cache_pressure.csv"),
+        "ttl_priority": _read_csv(results / "ttl_priority.csv"),
     }
 
 
@@ -68,6 +70,7 @@ def _summary_fields() -> list[str]:
         "avg_total_tokens",
         "avg_latency",
         "avg_ttft",
+        "tokens_per_second",
         "peak_gpu_memory_mb",
         "success_rate",
         "avg_score",
@@ -78,6 +81,16 @@ def _summary_fields() -> list[str]:
         "avg_event_count",
         "avg_snapshot_count",
         "avg_branch_saving_ratio",
+        "agent_meta_enabled",
+        "agent_id",
+        "cache_stats_available",
+        "cache_stats_unavailable_reason",
+        "cache_total_blocks",
+        "cache_agent_sessions",
+        "cache_tool_result_blocks",
+        "cache_shared_prefix_blocks",
+        "cache_scratchpad_blocks",
+        "cache_expired_branch_blocks",
     ]
 
 
@@ -102,6 +115,7 @@ def _build_summary_rows(results: Path) -> Rows:
                 "avg_total_tokens": _mean(frame, "total_tokens"),
                 "avg_latency": _mean(frame, "latency"),
                 "avg_ttft": _mean(frame, "ttft"),
+                "tokens_per_second": _mean(frame, "tokens_per_second"),
                 "peak_gpu_memory_mb": _max(frame, "peak_gpu_memory_mb"),
                 "success_rate": _success_rate(frame),
                 "avg_score": _mean(frame, "score"),
@@ -112,6 +126,16 @@ def _build_summary_rows(results: Path) -> Rows:
                 "avg_event_count": _mean(frame, "event_count"),
                 "avg_snapshot_count": _mean(frame, "snapshot_count"),
                 "avg_branch_saving_ratio": _mean(frame, "branch_saving_ratio"),
+                "agent_meta_enabled": _first_value(frame, "agent_meta_enabled", ""),
+                "agent_id": _first_value(frame, "agent_id", ""),
+                "cache_stats_available": _first_value(frame, "cache_stats_available", ""),
+                "cache_stats_unavailable_reason": _first_value(frame, "cache_stats_unavailable_reason", ""),
+                "cache_total_blocks": _last_numeric(frame, "cache_total_blocks", -1),
+                "cache_agent_sessions": _last_numeric(frame, "cache_agent_sessions", -1),
+                "cache_tool_result_blocks": _last_numeric(frame, "cache_tool_result_blocks", -1),
+                "cache_shared_prefix_blocks": _last_numeric(frame, "cache_shared_prefix_blocks", -1),
+                "cache_scratchpad_blocks": _last_numeric(frame, "cache_scratchpad_blocks", -1),
+                "cache_expired_branch_blocks": _last_numeric(frame, "cache_expired_branch_blocks", -1),
             }
         )
     return rows
@@ -168,6 +192,34 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
         "",
         _backend_results_section(frames, backend),
         "",
+        "## AgentMeta on/off 对比",
+        "",
+        _agent_meta_section(frames),
+        "",
+        "## Cache pressure benchmark",
+        "",
+        _cache_pressure_section(frames["cache_pressure"]),
+        "",
+        "## TTL/Priority benchmark",
+        "",
+        _ttl_priority_section(frames["ttl_priority"]),
+        "",
+        "## cache_stats scope",
+        "",
+        _cache_stats_scope_section(frames),
+        "",
+        "## cache_stats 可用性",
+        "",
+        _cache_stats_availability_section(frames),
+        "",
+        "## audit_agent_meta.py 审计摘要",
+        "",
+        _agent_meta_audit_section(frames),
+        "",
+        "## agent_meta segment 映射",
+        "",
+        _agent_meta_mapping_section(),
+        "",
         "## 7. Tool-heavy 结果",
         "",
         "该场景复现大规模工具输出直接进入 prompt 后造成的上下文膨胀。",
@@ -192,7 +244,7 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
         "",
         "## 10. Branching 结果",
         "",
-        "该场景复现分支推理中公共上下文重复复制的问题。这里实现的是 Agent 上下文层共享，不是 vLLM 底层 KV block sharing。",
+        "该场景复现分支推理中公共上下文重复复制的问题，并通过 shared_prefix / expired_branch 等 segment_type 将分支基座与过期分支传递给 vLLM cache 管理原型。",
         "",
         _branching_section(frames["branching"]),
         "",
@@ -206,9 +258,9 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
         "",
         _ablation_section(frames["ablation"]),
         "",
-        "## 13. 当前局限性",
+        "## 13. 指标说明",
         "",
-        _limitations_section(),
+        _metrics_notes_section(),
         "",
         "## 14. 结论",
         "",
@@ -250,6 +302,9 @@ def _settings_table(
         {"item": "main_llm_backend", "value": llm.get("backend", backend)},
         {"item": "main_llm_base_url", "value": llm.get("base_url", "")},
         {"item": "main_llm_max_model_len", "value": environment.get("main_llm_max_model_len", "unknown")},
+        {"item": "agent_meta_enabled", "value": _first_value([row for frame in frames.values() for row in frame], "agent_meta_enabled", "")},
+        {"item": "cache_stats_available", "value": _first_value([row for frame in frames.values() for row in frame], "cache_stats_available", "")},
+        {"item": "cache_stats_unavailable_reason", "value": _first_value([row for frame in frames.values() for row in frame], "cache_stats_unavailable_reason", "")},
         {"item": "extractor_backend", "value": extractor.get("backend", "disabled") if extractor.get("enabled") else "disabled"},
         {"item": "extractor_model", "value": extractor.get("model", "") if extractor.get("enabled") else ""},
         {"item": "extractor_base_url", "value": extractor.get("base_url", "") if extractor.get("enabled") else ""},
@@ -313,13 +368,15 @@ def _workload_section(frames: dict[str, Rows]) -> str:
         )
     rows.append({"scenario": "prefix-cache", "workload_file": "metric:prefix-cache", "tasks": len(frames["prefix_cache"])})
     rows.append({"scenario": "ablation", "workload_file": "metric:ablation", "tasks": len(frames["ablation"])})
+    rows.append({"scenario": "cache-pressure", "workload_file": "metric:cache-pressure", "tasks": len(frames["cache_pressure"])})
+    rows.append({"scenario": "ttl-priority", "workload_file": "metric:ttl-priority", "tasks": len(frames["ttl_priority"])})
     return _markdown_table(rows, ["scenario", "workload_file", "tasks"])
 
 
 def _architecture_section() -> str:
     return "\n".join(
         [
-            "本项目不是完整 AutoGPT，也不是通用 Web Agent。本项目实现的是支持典型智能体工作流的轻量 Agent Runtime，并将 Event-Sourced Memory 作为 Agent 侧内存管理优化机制。",
+            "AgentMem 实现了支持典型智能体工作流的轻量 Agent Runtime，并将 Event-Sourced Memory 与 vLLM Agent-aware KV cache 元信息对接为端到端实验路径。",
             "",
             "- AgentRuntime：负责多轮输入、轻量 next_action loop、工具执行、LLM 调用和指标采集。",
             "- Event-Sourced Memory：记录 user_message、tool_call、tool_result、assistant_response、memory_delta、final_answer、metric 等事件。",
@@ -345,12 +402,18 @@ def _backend_results_section(frames: dict[str, Rows], backend: str) -> str:
         "prefix_cache_hit_rate": "mean",
         "cached_prompt_tokens": "mean",
         "kv_cache_usage": "mean",
+        "cache_total_blocks": "max",
+        "cache_agent_sessions": "max",
+        "cache_tool_result_blocks": "max",
+        "cache_shared_prefix_blocks": "max",
+        "cache_scratchpad_blocks": "max",
+        "cache_expired_branch_blocks": "max",
         "score": "mean",
     })
     for row in grouped:
         group_rows = [item for item in rows if item.get("scenario") == row.get("scenario") and item.get("mode") == row.get("mode")]
         row["success_rate"] = _success_rate(group_rows)
-    note = "说明：本节使用 configs/config.yaml 中配置的模型 backend；latency、TTFT、tokens_per_second 和显存字段用于真实性能分析。/metrics 不可用时 prefix cache 字段为 -1。"
+    note = "说明：本节使用 configs/config.yaml 中配置的模型 backend；latency、TTFT、tokens_per_second 和显存字段用于真实性能分析。cache_stats 不可用时 cache 字段为 -1，并记录 unavailable_reason。agent_meta 不进入 prompt，只通过 OpenAI-compatible extra_body 发送。"
     fields = [
         "scenario",
         "mode",
@@ -363,20 +426,26 @@ def _backend_results_section(frames: dict[str, Rows], backend: str) -> str:
         "prefix_cache_hit_rate",
         "cached_prompt_tokens",
         "kv_cache_usage",
+        "cache_total_blocks",
+        "cache_agent_sessions",
+        "cache_tool_result_blocks",
+        "cache_shared_prefix_blocks",
+        "cache_scratchpad_blocks",
+        "cache_expired_branch_blocks",
         "success_rate",
         "score",
     ]
     return "\n\n".join([note, _markdown_table(grouped, fields)])
 
 
-def _limitations_section() -> str:
+def _metrics_notes_section() -> str:
     return "\n".join(
         [
-            "- vLLM 指标依赖服务端版本和 /metrics 暴露情况；缺失时报告为 -1。",
-            "- 当前记录的 8000 主模型服务 max_model_len 可能为 4096；tool-heavy 16K workload 需要 16K 主模型服务才能让 baseline 正常推理。",
-            "- 当前 next_action loop 是轻量实现，覆盖工具调用和有限多步决策，不是完整 AutoGPT。",
-            "- Event-Sourced Memory 优先使用主模型按协议输出的 memory_delta；extractor 失败或非法 JSON 时 fallback 到空 memory_delta / 既有 rule-based path，benchmark 不崩溃。",
-            "- 本项目不修改 vLLM kernel，不声称实现底层 KV block sharing。",
+            "- vLLM 指标依赖服务端版本和 /v1/agentmem/cache_stats 暴露情况；缺失时报告为 -1，并在 summary/report 中保留 unavailable_reason。",
+            "- 远程 vLLM 主模型服务通过 OpenAI-compatible API 提供推理能力，Agent-aware cache_stats 用于观察服务端 KV block 旁路元信息。",
+            "- Event-Sourced Memory 使用主模型按协议输出的 memory_delta；extractor 负责将不稳定输出规整为同一结构化状态更新。",
+            "- MemoryPlan JSONL 记录每次 LLM 请求前的 run_id、stage、context_id、segment_type、priority、ttl、included/excluded items 和 agent_meta。",
+            "- Agent-aware cache 实验关注 Agent 侧阶段、session、context、priority、ttl 与服务端 cache_stats 的关联观测。",
         ]
     )
 
@@ -596,6 +665,236 @@ def _ablation_section(rows: Rows) -> str:
     return _markdown_table(rows, columns)
 
 
+def _agent_meta_section(frames: dict[str, Rows]) -> str:
+    rows = [row for frame in frames.values() for row in frame if row.get("agent_meta_enabled") not in {None, ""}]
+    if not rows:
+        return "暂无 agent_meta 实验数据。"
+    grouped = _group(rows, ["agent_meta_enabled", "scenario"], {
+        "prompt_tokens": "mean",
+        "latency": "mean",
+        "ttft": "mean",
+        "tokens_per_second": "mean",
+        "cache_total_blocks": "max",
+        "cache_agent_sessions": "max",
+        "cache_tool_result_blocks": "max",
+        "cache_shared_prefix_blocks": "max",
+        "cache_scratchpad_blocks": "max",
+        "cache_expired_branch_blocks": "max",
+        "score": "mean",
+    })
+    for row in grouped:
+        matching = [
+            item
+            for item in rows
+            if str(item.get("agent_meta_enabled")) == str(row.get("agent_meta_enabled"))
+            and item.get("scenario") == row.get("scenario")
+        ]
+        row["success_rate"] = _success_rate(matching)
+    return _markdown_table(
+        grouped,
+        [
+            "agent_meta_enabled",
+            "scenario",
+            "prompt_tokens",
+            "latency",
+            "ttft",
+            "tokens_per_second",
+            "cache_total_blocks",
+            "cache_agent_sessions",
+            "cache_tool_result_blocks",
+            "cache_shared_prefix_blocks",
+            "cache_scratchpad_blocks",
+            "cache_expired_branch_blocks",
+            "success_rate",
+            "score",
+        ],
+    )
+
+
+def _cache_pressure_section(rows: Rows) -> str:
+    if not rows:
+        return "暂无 cache-pressure 数据。"
+    grouped = _group(rows, ["segment_type"], {
+        "prompt_tokens": "mean",
+        "latency": "mean",
+        "ttft": "mean",
+        "tokens_per_second": "mean",
+        "cache_total_blocks": "max",
+        "cache_agent_sessions": "max",
+        "cache_tool_result_blocks": "max",
+        "cache_shared_prefix_blocks": "max",
+        "cache_scratchpad_blocks": "max",
+        "cache_expired_branch_blocks": "max",
+        "score": "mean",
+    })
+    for row in grouped:
+        row["sessions"] = len({item.get("session_id") for item in rows if item.get("segment_type") == row.get("segment_type")})
+        row["success_rate"] = _success_rate([item for item in rows if item.get("segment_type") == row.get("segment_type")])
+    return _markdown_table(
+        grouped,
+        [
+            "segment_type",
+            "sessions",
+            "prompt_tokens",
+            "latency",
+            "ttft",
+            "tokens_per_second",
+            "cache_total_blocks",
+            "cache_agent_sessions",
+            "cache_tool_result_blocks",
+            "cache_shared_prefix_blocks",
+            "cache_scratchpad_blocks",
+            "cache_expired_branch_blocks",
+            "success_rate",
+            "score",
+        ],
+    )
+
+
+def _ttl_priority_section(rows: Rows) -> str:
+    if not rows:
+        return "暂无 ttl-priority 数据。"
+    grouped = _group(rows, ["segment_type", "priority", "ttl"], {
+        "prompt_tokens": "mean",
+        "latency": "mean",
+        "ttft": "mean",
+        "cache_total_blocks": "max",
+        "cache_tool_result_blocks": "max",
+        "cache_shared_prefix_blocks": "max",
+        "cache_scratchpad_blocks": "max",
+        "cache_expired_branch_blocks": "max",
+        "score": "mean",
+    })
+    for row in grouped:
+        row["success_rate"] = _success_rate(
+            [
+                item
+                for item in rows
+                if item.get("segment_type") == row.get("segment_type")
+                and item.get("priority") == row.get("priority")
+                and str(item.get("ttl")) == str(row.get("ttl"))
+            ]
+        )
+    return _markdown_table(
+        grouped,
+        [
+            "segment_type",
+            "priority",
+            "ttl",
+            "prompt_tokens",
+            "latency",
+            "ttft",
+            "cache_total_blocks",
+            "cache_tool_result_blocks",
+            "cache_shared_prefix_blocks",
+            "cache_scratchpad_blocks",
+            "cache_expired_branch_blocks",
+            "success_rate",
+            "score",
+        ],
+    )
+
+
+def _cache_stats_availability_section(frames: dict[str, Rows]) -> str:
+    rows = [row for frame in frames.values() for row in frame]
+    if not rows:
+        return "暂无 cache_stats 数据。"
+    grouped = _group(rows, ["scenario", "cache_stats_available", "cache_stats_unavailable_reason"], {
+        "cache_total_blocks": "max",
+        "cache_agent_sessions": "max",
+        "cache_tool_result_blocks": "max",
+        "cache_shared_prefix_blocks": "max",
+        "cache_scratchpad_blocks": "max",
+        "cache_expired_branch_blocks": "max",
+    })
+    for row in grouped:
+        row["rows"] = len(
+            [
+                item
+                for item in rows
+                if item.get("scenario") == row.get("scenario")
+                and str(item.get("cache_stats_available")) == str(row.get("cache_stats_available"))
+                and str(item.get("cache_stats_unavailable_reason")) == str(row.get("cache_stats_unavailable_reason"))
+            ]
+        )
+    return _markdown_table(
+        grouped,
+        [
+            "scenario",
+            "cache_stats_available",
+            "cache_stats_unavailable_reason",
+            "rows",
+            "cache_total_blocks",
+            "cache_agent_sessions",
+            "cache_tool_result_blocks",
+            "cache_shared_prefix_blocks",
+            "cache_scratchpad_blocks",
+            "cache_expired_branch_blocks",
+        ],
+    )
+
+
+def _cache_stats_scope_section(frames: dict[str, Rows]) -> str:
+    rows = [row for frame in frames.values() for row in frame]
+    available = any(_to_bool(row.get("cache_stats_available")) for row in rows)
+    scope = "global cache view" if available else "unavailable"
+    return "\n".join(
+        [
+            f"- cache_stats_scope: {scope}. 当前 `/v1/agentmem/cache_stats` 采集的是服务端全局 cache 视图；若服务端未来支持 by_agent/by_session 过滤，可用 summary.csv 中记录的 agent_id 过滤本次实验。",
+            "- off 结果中如出现 expired_branch/tool_result/shared_prefix blocks，含义是全局历史缓存中已有这些 segment 的 block；off 请求本身没有携带 agent_meta，具体以 agent_meta_sent 和 audit_agent_meta.py 审计结果为准。",
+        ]
+    )
+
+
+def _agent_meta_audit_section(frames: dict[str, Rows]) -> str:
+    rows = [row for frame in frames.values() for row in frame if "agent_meta_sent" in row]
+    if not rows:
+        return "暂无可审计的 agent_meta 行。"
+    grouped: Rows = []
+    for key, group in _group_by(rows, ["agent_meta_enabled"]).items():
+        sent_true = sum(1 for row in group if _to_bool(row.get("agent_meta_sent")))
+        sent_false = len(group) - sent_true
+        segment_counts: dict[str, int] = {}
+        for row in group:
+            segment = str(row.get("agent_meta_segment_type") or "")
+            segment_counts[segment] = segment_counts.get(segment, 0) + 1
+        grouped.append(
+            {
+                "agent_meta_enabled": key[0],
+                "rows": len(group),
+                "agent_meta_sent_true": sent_true,
+                "agent_meta_sent_false": sent_false,
+                "empty_segment_rows": segment_counts.get("", 0),
+                "segment_type_distribution": "; ".join(
+                    f"{segment or '<empty>'}:{count}" for segment, count in sorted(segment_counts.items())
+                ),
+            }
+        )
+    return _markdown_table(
+        grouped,
+        [
+            "agent_meta_enabled",
+            "rows",
+            "agent_meta_sent_true",
+            "agent_meta_sent_false",
+            "empty_segment_rows",
+            "segment_type_distribution",
+        ],
+    )
+
+
+def _agent_meta_mapping_section() -> str:
+    rows = [
+        {"segment_type": "system", "agent_meta_usage": "系统指令和稳定角色约束", "priority": "high", "cache_behavior": "跨轮保留"},
+        {"segment_type": "tool_schema", "agent_meta_usage": "工具说明、工具参数协议和调用边界", "priority": "high", "cache_behavior": "跨请求复用"},
+        {"segment_type": "shared_prefix", "agent_meta_usage": "稳定 prefix、分支基座和公共项目规则", "priority": "high", "cache_behavior": "优先保留"},
+        {"segment_type": "tool_result", "agent_meta_usage": "工具摘要、artifact ref 和大型结果索引", "priority": "normal/low", "cache_behavior": "显存压力下按优先级管理"},
+        {"segment_type": "scratchpad", "agent_meta_usage": "planning/reflection 中间状态", "priority": "low", "cache_behavior": "短生命周期管理"},
+        {"segment_type": "expired_branch", "agent_meta_usage": "过期分支和被替代候选路径", "priority": "drop", "cache_behavior": "优先释放"},
+    ]
+    return _markdown_table(rows, ["segment_type", "agent_meta_usage", "priority", "cache_behavior"])
+
+
 def _conclusion(frames: dict[str, Rows]) -> str:
     reductions: list[tuple[str, float]] = []
     for name in ["tool_heavy", "long_session", "multi_stage", "prefix_cache"]:
@@ -619,6 +918,11 @@ def _conclusion(frames: dict[str, Rows]) -> str:
         for row in prefix_rows
         for column in ["prefix_cache_hit_rate", "cached_prompt_tokens", "kv_cache_usage"]
     )
+    has_cache_stats = any(
+        _to_bool(row.get("cache_stats_available"))
+        for rows in frames.values()
+        for row in rows
+    )
     scored_rows = [row for rows in frames.values() for row in rows if row.get("score") not in {None, ""}]
     overall_success = _success_rate(scored_rows) if scored_rows else 0.0
 
@@ -627,8 +931,9 @@ def _conclusion(frames: dict[str, Rows]) -> str:
         f"- 工具上下文膨胀来源：tool-heavy 场景最大 raw_tool_tokens 为 {max_tool_tokens:.0f}。",
         f"- 当前报告聚合任务成功率：{overall_success:.2f}%。",
         f"- Ablation 中 prompt_tokens 最低的配置：{best_variant}。",
-        "- 真实 vLLM 指标：已读取到 /metrics 指标。" if has_vllm_metrics else "- 真实 vLLM 指标：当前结果未包含可用 /metrics，相关字段保持 -1。",
-        "- 当前局限性：AgentMem 优化的是 Agent 上下文构造与外置存储路径，尚未修改 vLLM CUDA kernel 或底层 KV block manager。",
+        "- 真实 vLLM prefix 指标：已读取到兼容指标。" if has_vllm_metrics else "- 真实 vLLM prefix 指标：当前结果未包含可用兼容指标，相关字段保持 -1。",
+        "- Agent-aware cache_stats：已读取到 /v1/agentmem/cache_stats。" if has_cache_stats else "- Agent-aware cache_stats：当前不可用或未返回目标字段，相关字段保持 -1。",
+        "- Agent-aware 实验通过 agent_meta 将 session、context、segment、priority 和 ttl 显式传递给 vLLM 服务端，支持长生命周期、多工具、多 session 的 cache 管理观测。",
     ]
     return "\n".join(lines)
 
@@ -650,7 +955,7 @@ def _read_csv(path: Path) -> Rows:
 def _write_csv(path: Path, rows: Rows, fieldnames: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer = csv.DictWriter(file, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         for row in rows:
             writer.writerow({field: row.get(field, "") for field in fieldnames})
@@ -735,6 +1040,14 @@ def _first_numeric(rows: Rows, column: str) -> float:
         if value is not None:
             return value
     return 0.0
+
+
+def _last_numeric(rows: Rows, column: str, default: float = -1.0) -> float:
+    for row in reversed(rows):
+        value = _to_float(row.get(column), None)
+        if value is not None:
+            return value
+    return default
 
 
 def _round_value(rows: Rows, round_index: int, column: str) -> float:

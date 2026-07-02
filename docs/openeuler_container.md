@@ -76,6 +76,6 @@ python -m agentmem report
 
 ## 当前远程部署说明
 
-当前远程模型机为 Ubuntu 22.04.5 LTS，GPU 为 RTX 4090。8000 服务是主 Agent 推理服务，9000 服务是 extractor 服务。openEuler 容器运行的是 AgentMem client 和 benchmark，不声称远程模型机是 openEuler。
+当前远程模型机为 Ubuntu 22.04.5 LTS，GPU 为 RTX 4090。8000 服务是主 Agent 推理服务，9000 服务是 extractor 服务。openEuler 容器运行 AgentMem client 和 benchmark，并在报告中标注 client 侧 openEuler 兼容性。
 
 如果 8000 主模型服务仍以 `--max-model-len 4096` 启动，tool-heavy 16K workload 的 baseline 超上下文是预期部署限制。要让 tool-heavy baseline 和 optimized 都在该 workload 上正常推理，主 Agent 的 8000 服务需要以 16K 或更高 `max_model_len` 启动。

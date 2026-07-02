@@ -16,7 +16,7 @@ class StepLLM:
     def __init__(self) -> None:
         self.calls = 0
 
-    def chat(self, messages: list[dict[str, str]]) -> dict:
+    def chat(self, messages: list[dict[str, str]], **_: object) -> dict:
         self.calls += 1
         if self.calls == 1:
             payload = {

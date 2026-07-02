@@ -1,0 +1,3 @@
+results_dir,rows,agent_meta_sent_true,agent_meta_sent_false,empty_segment_rows,segment_type_distribution
+results_cache_pressure_on_final,20,20,0,0,expired_branch:4;scratchpad:4;shared_prefix:4;tool_result:4;tool_schema:4
+results_cache_pressure_off_final,20,0,20,20,<empty>:20

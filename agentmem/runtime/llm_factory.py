@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agentmem.runtime.llm_client import OpenAICompatibleClient
+from agentmem.vllm.agent_meta import AgentMetaBuilder
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -46,9 +47,10 @@ def build_llm_client(config_path: str | Path | None = None):
     """
     config = load_runtime_config(config_path)
     llm_config = dict(config.get("llm") or {})
-    backend = os.getenv("AGENTMEM_LLM_BACKEND", str(llm_config.get("backend", "vllm"))).lower()
+    vllm_config = dict(config.get("vllm") or {})
+    backend = os.getenv("AGENTMEM_LLM_BACKEND", str(llm_config.get("backend", "vllm"))).replace("-", "_").lower()
 
-    if backend in {"vllm", "openai", "openai_compatible", "openai-compatible"}:
+    if backend in {"vllm", "openai", "openai_compatible"}:
         default_base_url = "http://localhost:8000/v1" if backend == "vllm" else "https://api.openai.com/v1"
         base_url = (
             os.getenv("AGENTMEM_LLM_BASE_URL")
@@ -58,6 +60,17 @@ def build_llm_client(config_path: str | Path | None = None):
         )
         model = os.getenv("AGENTMEM_MODEL") or llm_config.get("model") or "Qwen/Qwen2.5-7B-Instruct"
         api_key = _resolve_api_key(llm_config, backend)
+        enable_agent_meta = (
+            _bool(os.getenv("AGENTMEM_ENABLE_AGENT_META", vllm_config.get("enable_agent_meta", False)))
+            if backend == "vllm"
+            else False
+        )
+        agent_meta_builder = None
+        if enable_agent_meta:
+            agent_meta_builder = AgentMetaBuilder(
+                agent_id=str(os.getenv("AGENTMEM_AGENT_ID") or vllm_config.get("agent_id", "agentmem_benchmark")),
+                default_ttl=int(vllm_config.get("default_ttl", 300)),
+            )
         return OpenAICompatibleClient(
             base_url=str(base_url),
             api_key=api_key,
@@ -67,6 +80,9 @@ def build_llm_client(config_path: str | Path | None = None):
             timeout=float(llm_config.get("timeout", 120)),
             stream=backend == "vllm",
             max_retries=int(llm_config.get("max_retries", 2)),
+            backend=backend,
+            enable_agent_meta=enable_agent_meta,
+            agent_meta_builder=agent_meta_builder,
         )
 
     raise ValueError(f"不支持的 llm.backend: {backend}")
@@ -106,3 +122,11 @@ def _parse_scalar(value: str) -> Any:
     if value.lower() == "false":
         return False
     return value
+
+
+def _bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)

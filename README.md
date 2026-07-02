@@ -2,7 +2,7 @@
 
 AgentMem 是一个面向智能体推理过程的轻量 Agent Runtime + Memory Manager，并提供可复现 Benchmark 来评估优化前后的上下文、质量和真实性能指标。
 
-本项目不是完整 AutoGPT，也不是通用 Web Agent。本项目实现的是支持典型智能体工作流的轻量 Agent Runtime，并将 Event-Sourced Memory 作为 Agent 侧内存管理优化机制。
+项目实现了典型智能体工作流所需的多轮会话、工具调用、分支推理、Event-Sourced Memory、Agent-aware `agent_meta` 传递和 vLLM cache_stats 观测能力。
 
 核心目标是：在相同硬件配置和相同开源模型服务下，对比 baseline 和 optimized Agent 内存路径，评估 prompt tokens、latency、TTFT、吞吐、显存、success rate 和 score。
 

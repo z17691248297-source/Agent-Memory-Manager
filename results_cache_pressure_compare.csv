@@ -1,0 +1,13 @@
+scenario,metric,off,on,delta,delta_percent
+cache-pressure,avg_prompt_tokens,5483.8,5483.8,0.0,0.0
+cache-pressure,avg_latency,2.437991168150256,2.745731302650347,0.30774013450009097,12.622692752967538
+cache-pressure,avg_ttft,0.41750076775060735,0.9550059798499205,0.5375052120993131,128.7435266275702
+cache-pressure,tokens_per_second,41.9676459035568,36.797693347285204,-5.169952556271596,-12.318900536266291
+cache-pressure,success_rate,100.0,100.0,0.0,0.0
+cache-pressure,avg_score,1.0,1.0,0.0,0.0
+cache-pressure,cache_total_blocks,7999.0,7996.0,-3.0,-0.037504688086010755
+cache-pressure,cache_agent_sessions,14.0,14.0,0.0,0.0
+cache-pressure,cache_tool_result_blocks,2483.0,2483.0,0.0,0.0
+cache-pressure,cache_shared_prefix_blocks,1388.0,1388.0,0.0,0.0
+cache-pressure,cache_scratchpad_blocks,1384.0,1384.0,0.0,0.0
+cache-pressure,cache_expired_branch_blocks,1381.0,1378.0,-3.0,-0.2172338884866039

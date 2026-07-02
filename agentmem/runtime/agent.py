@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import time
+import os
+from pathlib import Path
 from uuid import uuid4
 
 from agentmem.event_memory.memory_delta import MemoryDelta, MemoryDeltaParser
@@ -10,6 +12,8 @@ from agentmem.metrics.gpu_monitor import get_peak_gpu_memory_mb
 from agentmem.tools.executor import ToolExecutor
 from agentmem.tools.registry import ToolRegistry
 from agentmem.tools.router import ToolRouter
+from agentmem.vllm.agent_meta import default_segment_type_for_stage
+from agentmem.vllm.memory_plan import MemoryPlanLogger
 
 
 class AgentRuntime:
@@ -25,6 +29,7 @@ class AgentRuntime:
         memory_delta_extractor=None,
         max_steps: int = 1,
         enable_next_action_loop: bool = False,
+        memory_plan_dir: str | Path | None = None,
     ) -> None:
         self.memory = memory
         self.tools = tools
@@ -36,11 +41,14 @@ class AgentRuntime:
         self.memory_delta_extractor = memory_delta_extractor
         self.max_steps = max(1, int(max_steps or 1))
         self.enable_next_action_loop = bool(enable_next_action_loop)
+        self.run_id = _memory_session_id(self.memory) or _new_run_id()
+        self.memory_plan_logger = MemoryPlanLogger(memory_plan_dir) if memory_plan_dir else None
 
     def run(self, user_input: str, stage: str = "planning", tool_context: dict | None = None) -> tuple[str, dict]:
         self.round += 1
         tool_context = dict(tool_context or {})
-        run_id = _new_run_id()
+        session_run_id = _memory_session_id(self.memory) or self.run_id
+        run_id = session_run_id
         if hasattr(self.memory, "start_round"):
             self.memory.start_round(self.round, stage, user_input, run_id=run_id)
         if hasattr(self.memory, "set_task_requirements"):
@@ -56,6 +64,7 @@ class AgentRuntime:
         prompt_tokens = output_tokens = total_tokens = 0
         latency = ttft = tokens_per_second = 0.0
         assistant_response = ""
+        last_agent_meta: dict = {}
         completion_reached = False
         llm_error = ""
         extractor_error = ""
@@ -90,8 +99,41 @@ class AgentRuntime:
         max_llm_steps = self.max_steps if self.enable_next_action_loop else 1
         for step_index in range(1, max_llm_steps + 1):
             messages = self.memory.build_messages(stage=stage, selected_tools=selected_tools)
+            segment_type = _segment_type_for_runtime_stage(stage, bool(tool_results), bool(selected_tools))
+            agent_meta_context_id = f"{run_id}:round_{self.round}:step_{step_index}:{stage}:{segment_type}"
+            agent_meta_tool_name = selected_tools[0] if segment_type == "tool_result" and selected_tools else None
+            agent_meta_priority = _priority_for_runtime_stage(stage, segment_type)
+            planned_agent_meta = self._build_agent_meta(
+                run_id=run_id,
+                stage=stage,
+                segment_type=segment_type,
+                context_id=agent_meta_context_id,
+                tool_name=agent_meta_tool_name,
+                priority=agent_meta_priority,
+            )
+            self._record_memory_plan(
+                run_id=run_id,
+                stage=stage,
+                context_id=agent_meta_context_id,
+                segment_type=segment_type,
+                priority=agent_meta_priority,
+                ttl=planned_agent_meta.get("ttl") if planned_agent_meta else None,
+                messages=messages,
+                selected_tools=selected_tools,
+                tool_results=tool_results,
+                agent_meta=planned_agent_meta,
+            )
             try:
-                response = self.llm_client.chat(messages)
+                response = self.llm_client.chat(
+                    messages,
+                    agent_meta=planned_agent_meta,
+                    run_id=run_id,
+                    stage=stage,
+                    segment_type=segment_type,
+                    context_id=agent_meta_context_id,
+                    tool_name=agent_meta_tool_name,
+                    priority=agent_meta_priority,
+                )
             except RuntimeError as exc:
                 llm_error = str(exc)
                 prompt_tokens += estimate_tokens(str(messages))
@@ -103,6 +145,8 @@ class AgentRuntime:
             output_tokens += int(response.get("completion_tokens", 0) or 0)
             total_tokens += int(response.get("total_tokens", 0) or 0)
             latency += float(response.get("latency", 0.0) or 0.0)
+            if response.get("agent_meta_sent"):
+                last_agent_meta = dict(response.get("agent_meta") or {})
             if step_index == 1:
                 ttft = float(response.get("ttft", -1) or -1)
             tokens_per_second = float(response.get("tokens_per_second", -1) or -1)
@@ -225,6 +269,14 @@ class AgentRuntime:
             "extractor_failure_count": extractor_failure_count,
             "extractor_effective": bool(extractor_success_count > 0),
             "extractor_status": "active" if extractor_success_count > 0 else ("fallback" if extractor_calls else "not_used"),
+            "agent_meta_enabled": bool(getattr(self.llm_client, "enable_agent_meta", False)),
+            "agent_id": last_agent_meta.get("agent_id", os.getenv("AGENTMEM_AGENT_ID", "")),
+            "agent_meta_sent": bool(last_agent_meta),
+            "agent_meta_agent_id": last_agent_meta.get("agent_id", ""),
+            "agent_meta_session_id": last_agent_meta.get("session_id", ""),
+            "agent_meta_context_id": last_agent_meta.get("context_id", ""),
+            "agent_meta_segment_type": last_agent_meta.get("segment_type", ""),
+            "agent_meta_priority": last_agent_meta.get("priority", ""),
         }
         if hasattr(self.memory, "record_metrics"):
             self.memory.record_metrics(metrics)
@@ -267,6 +319,77 @@ class AgentRuntime:
         result.latency = time.perf_counter() - start
         return result
 
+    def _build_agent_meta(
+        self,
+        *,
+        run_id: str,
+        stage: str,
+        segment_type: str,
+        context_id: str,
+        tool_name: str | None,
+        priority: str | None,
+    ) -> dict:
+        if not hasattr(self.llm_client, "build_agent_meta"):
+            return {}
+        meta = self.llm_client.build_agent_meta(
+            run_id=run_id,
+            stage=stage,
+            segment_type=segment_type,
+            context_id=context_id,
+            tool_name=tool_name,
+            priority=priority,
+        )
+        return dict(meta or {})
+
+    def _record_memory_plan(
+        self,
+        *,
+        run_id: str,
+        stage: str,
+        context_id: str,
+        segment_type: str,
+        priority: str | None,
+        ttl: int | None,
+        messages: list[dict[str, str]],
+        selected_tools: list[str],
+        tool_results: list,
+        agent_meta: dict,
+    ) -> None:
+        if self.memory_plan_logger is None:
+            return
+        hint = self.memory.latest_metrics_hint() if hasattr(self.memory, "latest_metrics_hint") else {}
+        included_items = _included_plan_items(stage, selected_tools, tool_results, hint)
+        external_refs = [
+            {
+                "tool_name": getattr(result, "tool_name", ""),
+                "result_id": getattr(result, "result_id", ""),
+                "summary_token_len": int(getattr(result, "summary_token_len", 0) or 0),
+            }
+            for result in tool_results
+        ]
+        raw_tool_tokens = sum(int(getattr(result, "raw_token_len", 0) or 0) for result in tool_results)
+        injected_tool_tokens = sum(
+            int(getattr(result, "summary_token_len", 0) or 0)
+            if bool(getattr(self.memory, "enable_tool_externalization", False))
+            else prompt_display_tokens(result, estimate_tokens)
+            for result in tool_results
+        )
+        excluded_items = ["raw_tool_result_body"] if raw_tool_tokens > injected_tool_tokens else []
+        self.memory_plan_logger.record(
+            run_id=run_id,
+            stage=stage,
+            context_id=context_id,
+            segment_type=segment_type,
+            priority=priority,
+            ttl=ttl,
+            included_items=included_items,
+            external_refs=external_refs,
+            excluded_items=excluded_items,
+            estimated_prompt_tokens=estimate_tokens(str(messages)),
+            estimated_saved_tokens=max(0, raw_tool_tokens - injected_tool_tokens),
+            agent_meta=agent_meta,
+        )
+
 
 def _is_final_action(action: dict) -> bool:
     if not action:
@@ -289,3 +412,38 @@ def _tool_input_from_action(action: dict, fallback: str) -> str:
 
 def _new_run_id() -> str:
     return f"run_{int(time.time() * 1000)}_{uuid4().hex[:8]}"
+
+
+def _memory_session_id(memory) -> str:
+    return str(getattr(memory, "run_id", "") or getattr(memory, "session_id", "") or "")
+
+
+def _segment_type_for_runtime_stage(stage: str, has_tool_results: bool, has_selected_tools: bool = False) -> str:
+    if has_tool_results:
+        return "tool_result"
+    if stage == "tool_calling" and has_selected_tools:
+        return "tool_schema"
+    return default_segment_type_for_stage(stage)
+
+
+def _priority_for_runtime_stage(stage: str, segment_type: str) -> str | None:
+    if segment_type in {"shared_prefix", "system", "tool_schema"}:
+        return "high"
+    if stage == "reflection":
+        return "low"
+    if stage == "planning":
+        return "normal"
+    return None
+
+
+def _included_plan_items(stage: str, selected_tools: list[str], tool_results: list, hint: dict) -> list[dict[str, object]]:
+    items: list[dict[str, object]] = [{"name": "stage", "value": stage}]
+    for key in ["system", "tool_schema", "tool_brief", "history", "summary", "tool_summary", "state_view"]:
+        value = int(hint.get(key, 0) or 0)
+        if value > 0:
+            items.append({"name": key, "estimated_tokens": value})
+    if selected_tools:
+        items.append({"name": "selected_tools", "value": ",".join(selected_tools)})
+    if tool_results:
+        items.append({"name": "tool_results", "count": len(tool_results)})
+    return items

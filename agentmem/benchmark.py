@@ -27,9 +27,22 @@ from agentmem.runtime.factory import PROJECT_ROOT, SYSTEM_PROMPT
 from agentmem.runtime.llm_factory import build_llm_client, load_runtime_config
 from agentmem.tools.executor import ToolExecutor
 from agentmem.tools.tool_registry import build_default_registry
+from agentmem.vllm.agent_meta import default_segment_type_for_stage
+from agentmem.vllm.cache_stats import CacheStatsCollector
+from agentmem.vllm.memory_plan import MemoryPlanLogger
 
 
-SCENARIOS = {"tool-heavy", "long-session", "multi-stage", "branching", "prefix-cache", "ablation", "all"}
+SCENARIOS = {
+    "tool-heavy",
+    "long-session",
+    "multi-stage",
+    "branching",
+    "prefix-cache",
+    "ablation",
+    "cache-pressure",
+    "ttl-priority",
+    "all",
+}
 LONG_MULTI_MEMORY_MODES = ["full_history", "summary_memory", "event_sourced_memory"]
 MODES = {"baseline", "optimized", "both", *LONG_MULTI_MEMORY_MODES}
 TASK_DIR = PROJECT_ROOT / "benchmarks" / "tasks"
@@ -70,6 +83,22 @@ COMMON_FIELDS = [
     "refill_tokens",
     "initial_score",
     "final_score",
+    "agent_meta_enabled",
+    "agent_id",
+    "agent_meta_sent",
+    "agent_meta_agent_id",
+    "agent_meta_session_id",
+    "agent_meta_context_id",
+    "agent_meta_segment_type",
+    "agent_meta_priority",
+    "cache_stats_available",
+    "cache_stats_unavailable_reason",
+    "cache_total_blocks",
+    "cache_agent_sessions",
+    "cache_tool_result_blocks",
+    "cache_shared_prefix_blocks",
+    "cache_scratchpad_blocks",
+    "cache_expired_branch_blocks",
 ]
 
 TOOL_HEAVY_FIELDS = [
@@ -173,6 +202,22 @@ VLLM_BENCHMARK_FIELDS = [
     "prefix_cache_hit_rate",
     "cached_prompt_tokens",
     "kv_cache_usage",
+    "agent_meta_enabled",
+    "agent_id",
+    "agent_meta_sent",
+    "agent_meta_agent_id",
+    "agent_meta_session_id",
+    "agent_meta_context_id",
+    "agent_meta_segment_type",
+    "agent_meta_priority",
+    "cache_stats_available",
+    "cache_stats_unavailable_reason",
+    "cache_total_blocks",
+    "cache_agent_sessions",
+    "cache_tool_result_blocks",
+    "cache_shared_prefix_blocks",
+    "cache_scratchpad_blocks",
+    "cache_expired_branch_blocks",
 ]
 
 ABLATION_FIELDS = [
@@ -202,6 +247,27 @@ ABLATION_FIELDS = [
     "failure_reason",
     "passed_checks",
     "total_checks",
+    "agent_meta_enabled",
+    "agent_id",
+    "cache_stats_available",
+    "cache_stats_unavailable_reason",
+    "cache_total_blocks",
+    "cache_agent_sessions",
+    "cache_tool_result_blocks",
+    "cache_shared_prefix_blocks",
+    "cache_scratchpad_blocks",
+    "cache_expired_branch_blocks",
+]
+
+CACHE_EXPERIMENT_FIELDS = [
+    *COMMON_FIELDS,
+    "session_id",
+    "step",
+    "context_id",
+    "segment_type",
+    "priority",
+    "ttl",
+    "prompt_label",
 ]
 
 
@@ -213,6 +279,9 @@ class BenchmarkOptions:
     repeat: int = 1
     output_dir: Path = PROJECT_ROOT / "results"
     config_path: Path = PROJECT_ROOT / "configs" / "config.yaml"
+    agent_meta_enabled: bool | None = None
+    sessions: int = 4
+    agent_id: str | None = None
 
 
 def run_benchmark(options: BenchmarkOptions) -> dict[str, Any]:
@@ -225,13 +294,23 @@ def run_benchmark(options: BenchmarkOptions) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     repeat = max(1, int(options.repeat))
     backend = options.backend.replace("-", "_")
+    agent_id = options.agent_id or _default_agent_id(options.scenario, options.agent_meta_enabled)
 
     paths: list[Path] = []
-    scenarios = ["tool-heavy", "long-session", "multi-stage", "branching", "prefix-cache", "ablation"]
+    scenarios = [
+        "tool-heavy",
+        "long-session",
+        "multi-stage",
+        "branching",
+        "prefix-cache",
+        "ablation",
+        "cache-pressure",
+        "ttl-priority",
+    ]
     if options.scenario != "all":
         scenarios = [options.scenario]
 
-    with _override_backend(backend):
+    with _override_backend(backend), _override_agent_meta(options.agent_meta_enabled), _override_agent_id(agent_id):
         for scenario in scenarios:
             if scenario == "tool-heavy":
                 paths.extend(_run_tool_heavy(options.config_path, output_dir, backend, options.mode, repeat))
@@ -245,6 +324,10 @@ def run_benchmark(options: BenchmarkOptions) -> dict[str, Any]:
                 paths.extend(_run_prefix_cache(options.config_path, output_dir, backend, options.mode, repeat))
             elif scenario == "ablation":
                 paths.append(_run_ablation(options.config_path, output_dir, backend))
+            elif scenario == "cache-pressure":
+                paths.append(_run_cache_pressure(options.config_path, output_dir, backend, options.sessions))
+            elif scenario == "ttl-priority":
+                paths.append(_run_ttl_priority(options.config_path, output_dir, backend))
 
     if backend == "vllm":
         paths.append(_write_vllm_benchmark(output_dir))
@@ -269,6 +352,7 @@ def _run_tool_heavy(
     paths: list[Path] = []
 
     for memory_mode in _selected_modes(mode):
+        cache_before = _capture_cache_stats(config_path, output_dir, "tool-heavy", memory_mode, "before", backend)
         rows = []
         for repeat_index in range(repeat):
             for task_index, task in enumerate(tasks, start=1):
@@ -298,7 +382,10 @@ def _run_tool_heavy(
                     round_index=repeat_index * len(tasks) + task_index,
                 )
                 row.update(evaluation_fields(result))
+                row.update(_cache_stats_row(cache_before))
                 rows.append(_select_fields(row, TOOL_HEAVY_FIELDS, default=-1))
+        cache_after = _capture_cache_stats(config_path, output_dir, "tool-heavy", memory_mode, "after", backend)
+        rows = [_merge_cache_stats(row, cache_after) for row in rows]
         path = output_dir / f"tool_heavy_{memory_mode}.csv"
         _write_csv(path, rows, TOOL_HEAVY_FIELDS)
         paths.append(path)
@@ -319,6 +406,7 @@ def _run_long_session(
     paths: list[Path] = []
 
     for memory_mode in _selected_long_multi_modes(mode):
+        cache_before = _capture_cache_stats(config_path, output_dir, "long-session", memory_mode, "before", backend)
         rows: list[dict[str, Any]] = []
         for _ in range(repeat):
             for session_id, session_tasks in sessions.items():
@@ -342,7 +430,10 @@ def _run_long_session(
                     row["session_id"] = session_id
                     row["recent_turns"] = recent_turns
                     row.update(evaluation_fields(result))
+                    row.update(_cache_stats_row(cache_before))
                     rows.append(_select_fields(row, LONG_SESSION_FIELDS, default=-1))
+        cache_after = _capture_cache_stats(config_path, output_dir, "long-session", memory_mode, "after", backend)
+        rows = [_merge_cache_stats(row, cache_after) for row in rows]
         path = output_dir / f"long_session_{memory_mode}.csv"
         _write_csv(path, rows, LONG_SESSION_FIELDS)
         paths.append(path)
@@ -370,6 +461,7 @@ def _run_multi_stage(
     paths: list[Path] = []
 
     for memory_mode in _selected_long_multi_modes(mode):
+        cache_before = _capture_cache_stats(config_path, output_dir, "multi-stage", memory_mode, "before", backend)
         rows: list[dict[str, Any]] = []
         for _ in range(repeat):
             for session_id, session_tasks in sessions.items():
@@ -399,7 +491,10 @@ def _run_multi_stage(
                     row["step"] = int(task.get("step", step_index))
                     row["completed_stages"] = ",".join(completed_stages)
                     row.update(evaluation_fields(result))
+                    row.update(_cache_stats_row(cache_before))
                     rows.append(_select_fields(row, MULTI_STAGE_FIELDS, default=-1))
+        cache_after = _capture_cache_stats(config_path, output_dir, "multi-stage", memory_mode, "after", backend)
+        rows = [_merge_cache_stats(row, cache_after) for row in rows]
         path = output_dir / f"multi_stage_{memory_mode}.csv"
         _write_csv(path, rows, MULTI_STAGE_FIELDS)
         paths.append(path)
@@ -421,11 +516,16 @@ def _run_branching(config_path: Path, output_dir: Path, backend: str, mode: str,
     combined_rows: list[dict[str, Any]] = []
 
     for memory_mode in _selected_modes(mode):
+        cache_before = _capture_cache_stats(config_path, output_dir, "branching", memory_mode, "before", backend)
         rows: list[dict[str, Any]] = []
         for _ in range(repeat):
             for task in tasks:
                 for branch_count in task.get("branch_counts") or [2, 4, 8]:
-                    rows.append(_branch_row(task, workload, int(branch_count), memory_mode, backend, config_path))
+                    row = _branch_row(task, workload, int(branch_count), memory_mode, backend, config_path, output_dir)
+                    row.update(_cache_stats_row(cache_before))
+                    rows.append(_select_fields(row, BRANCHING_FIELDS, default=-1))
+        cache_after = _capture_cache_stats(config_path, output_dir, "branching", memory_mode, "after", backend)
+        rows = [_merge_cache_stats(row, cache_after) for row in rows]
         path = output_dir / f"branching_{memory_mode}.csv"
         _write_csv(path, rows, BRANCHING_FIELDS)
         paths.append(path)
@@ -449,11 +549,23 @@ def _run_prefix_cache(
     metrics_url = str(dict(config.get("vllm") or {}).get("metrics_url", "http://localhost:8000/metrics"))
 
     for memory_mode in _selected_modes(mode):
+        cache_before = _capture_cache_stats(config_path, output_dir, "prefix-cache", memory_mode, "before", backend)
         rows = []
         total_rounds = repeat * 6
         for round_index in range(1, total_rounds + 1):
             prompt, stable_prefix = _prefix_cache_prompt(memory_mode, round_index)
-            response = _safe_call_prompt(config_path, prompt)
+            run_id = f"prefix_cache_{memory_mode}"
+            response = _safe_call_prompt(
+                config_path,
+                prompt,
+                run_id=run_id,
+                stage="prefix_cache",
+                segment_type="shared_prefix",
+                context_id=f"{run_id}:round_{round_index}:shared_prefix",
+                priority="high",
+                output_dir=output_dir,
+                included_items=["system_prompt", "project_rules", "tool_briefs", "history_summary"],
+            )
             if backend == "vllm" and response.get("error"):
                 raise RuntimeError(str(response["error"]))
             prompt_tokens = response["prompt_tokens"]
@@ -486,6 +598,9 @@ def _run_prefix_cache(
                 "tokens_per_second": tokens_per_second,
                 "peak_gpu_memory_mb": get_peak_gpu_memory_mb(),
                 "failure_reason": llm_error,
+                "agent_meta_enabled": _agent_meta_enabled(config_path),
+                "agent_id": _agent_id_value(config_path),
+                **_cache_stats_row(cache_before),
                 **vllm_metrics,
             }
             rows.append(row)
@@ -506,6 +621,8 @@ def _run_prefix_cache(
                 )
             )
         path = output_dir / f"prefix_cache_{memory_mode}.csv"
+        cache_after = _capture_cache_stats(config_path, output_dir, "prefix-cache", memory_mode, "after", backend)
+        rows = [_merge_cache_stats(row, cache_after) for row in rows]
         rows = [_select_fields(row, PREFIX_CACHE_FIELDS, default=-1) for row in rows]
         _write_csv(path, rows, PREFIX_CACHE_FIELDS)
         paths.append(path)
@@ -615,10 +732,24 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
     ]
 
     rows: list[dict[str, Any]] = []
+    cache_before = _capture_cache_stats(config_path, output_dir, "ablation", "ablation", "before", backend)
     for item in variants:
         prompt = "\n\n".join(item["parts"])
         prompt_tokens = estimate_tokens(prompt)
-        response = _safe_call_prompt(config_path, prompt)
+        response = _safe_call_prompt(
+            config_path,
+            prompt,
+            run_id="agentmem_ablation_session",
+            stage="ablation",
+            segment_type="shared_prefix",
+            context_id=f"agentmem_ablation_session:ablation:{item['variant']}",
+            priority="high",
+            output_dir=output_dir,
+            included_items=["system_prompt", "tool_context", "history_context", str(item["variant"])],
+            external_refs=[{"tool_name": result.tool_name, "result_id": result.result_id}],
+            excluded_items=["raw_tool_result_body"] if item["injected_tool_tokens"] < result.raw_token_len else [],
+            estimated_saved_tokens=max(0, result.raw_token_len - int(item["injected_tool_tokens"])),
+        )
         latency = response["latency"]
         ttft = response.get("ttft", -1)
         output_tokens = response.get("completion_tokens", 0)
@@ -647,6 +778,9 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
             "loaded_skill_tokens": item["loaded_skill_tokens"],
             "unique_prefix_hashes": item["unique_prefix_hashes"],
             "prefix_reuse_score": 1 / item["unique_prefix_hashes"],
+            "agent_meta_enabled": _agent_meta_enabled(config_path),
+            "agent_id": _agent_id_value(config_path),
+            **_cache_stats_row(cache_before),
         }
         rows.append(row)
 
@@ -655,8 +789,270 @@ def _run_ablation(config_path: Path, output_dir: Path, backend: str) -> Path:
         row.update(evaluation_fields(_evaluate_ablation_row(row, baseline)))
 
     path = output_dir / "ablation.csv"
+    cache_after = _capture_cache_stats(config_path, output_dir, "ablation", "ablation", "after", backend)
+    rows = [_merge_cache_stats(row, cache_after) for row in rows]
     _write_csv(path, [_select_fields(row, ABLATION_FIELDS, default=-1) for row in rows], ABLATION_FIELDS)
     return path
+
+
+def _run_cache_pressure(config_path: Path, output_dir: Path, backend: str, sessions: int) -> Path:
+    scenario = "cache-pressure"
+    mode = f"sessions_{max(1, int(sessions or 1))}"
+    cache_before = _capture_cache_stats(config_path, output_dir, scenario, mode, "before", backend)
+    rows: list[dict[str, Any]] = []
+    segment_plan = [
+        ("shared_prefix", "shared_prefix", "high", 3600, None),
+        ("tool_schema", "tool_schema", "high", 1800, None),
+        ("tool_result", "tool_result", "normal", 300, "log_analyzer"),
+        ("scratchpad", "scratchpad", "low", 60, None),
+        ("expired_branch", "expired_branch", "drop", 1, None),
+    ]
+
+    for step_index, (stage, segment_type, priority, ttl, tool_name) in enumerate(segment_plan, start=1):
+        for session_index in range(1, max(1, int(sessions or 1)) + 1):
+            run_id = f"cache_pressure_session_{session_index}"
+            context_id = f"{run_id}:step_{step_index}:{stage}:{segment_type}"
+            prompt = _cache_pressure_prompt(session_index, step_index, segment_type)
+            response = _safe_call_prompt(
+                config_path,
+                prompt,
+                run_id=run_id,
+                stage=stage,
+                segment_type=segment_type,
+                context_id=context_id,
+                tool_name=tool_name,
+                priority=priority,
+                ttl=ttl,
+                branch_id=f"{run_id}:expired_branch_{step_index}" if segment_type == "expired_branch" else None,
+                output_dir=output_dir,
+                included_items=_cache_pressure_items(segment_type, session_index),
+                external_refs=_cache_pressure_refs(segment_type, session_index, step_index),
+                excluded_items=["expired_branch_context"] if segment_type == "expired_branch" else [],
+                estimated_saved_tokens=estimate_tokens(prompt) // 5 if segment_type in {"tool_result", "expired_branch"} else 0,
+            )
+            row = _cache_experiment_row(
+                scenario=scenario,
+                task_id=f"cache_pressure_s{session_index}_step{step_index}",
+                mode=mode,
+                backend=backend,
+                run_id=run_id,
+                stage=stage,
+                step=step_index,
+                session_id=run_id,
+                context_id=context_id,
+                segment_type=segment_type,
+                priority=priority,
+                ttl=ttl,
+                prompt_label=f"{segment_type}_session_{session_index}",
+                response=response,
+                cache_stats=cache_before,
+                config_path=config_path,
+            )
+            rows.append(_select_fields(row, CACHE_EXPERIMENT_FIELDS, default=-1))
+
+    cache_after = _capture_cache_stats(config_path, output_dir, scenario, mode, "after", backend)
+    rows = [_select_fields(_merge_cache_stats(row, cache_after), CACHE_EXPERIMENT_FIELDS, default=-1) for row in rows]
+    path = output_dir / "cache_pressure.csv"
+    _write_csv(path, rows, CACHE_EXPERIMENT_FIELDS)
+    return path
+
+
+def _run_ttl_priority(config_path: Path, output_dir: Path, backend: str) -> Path:
+    scenario = "ttl-priority"
+    mode = "ttl_priority"
+    cache_before = _capture_cache_stats(config_path, output_dir, scenario, mode, "before", backend)
+    rows: list[dict[str, Any]] = []
+    segment_plan = [
+        ("shared_prefix", "shared_prefix", "high", 3600, None),
+        ("tool_schema", "tool_schema", "high", 1800, None),
+        ("tool_result", "tool_result", "low", 120, "log_analyzer"),
+        ("scratchpad", "scratchpad", "low", 60, None),
+        ("expired_branch", "expired_branch", "drop", 1, None),
+    ]
+    run_id = "ttl_priority_session"
+
+    for step_index, (stage, segment_type, priority, ttl, tool_name) in enumerate(segment_plan, start=1):
+        context_id = f"{run_id}:step_{step_index}:{segment_type}:ttl_{ttl}:priority_{priority}"
+        prompt = _ttl_priority_prompt(segment_type, priority, ttl, step_index)
+        response = _safe_call_prompt(
+            config_path,
+            prompt,
+            run_id=run_id,
+            stage=stage,
+            segment_type=segment_type,
+            context_id=context_id,
+            tool_name=tool_name,
+            priority=priority,
+            ttl=ttl,
+            branch_id=f"{run_id}:expired_branch" if segment_type == "expired_branch" else None,
+            output_dir=output_dir,
+            included_items=[segment_type, f"priority={priority}", f"ttl={ttl}"],
+            external_refs=_cache_pressure_refs(segment_type, 1, step_index),
+            excluded_items=["expired_branch_context"] if segment_type == "expired_branch" else [],
+            estimated_saved_tokens=estimate_tokens(prompt) // 4 if segment_type in {"tool_result", "scratchpad", "expired_branch"} else 0,
+        )
+        row = _cache_experiment_row(
+            scenario=scenario,
+            task_id=f"ttl_priority_step_{step_index}",
+            mode=mode,
+            backend=backend,
+            run_id=run_id,
+            stage=stage,
+            step=step_index,
+            session_id=run_id,
+            context_id=context_id,
+            segment_type=segment_type,
+            priority=priority,
+            ttl=ttl,
+            prompt_label=f"{segment_type}_ttl_{ttl}_priority_{priority}",
+            response=response,
+            cache_stats=cache_before,
+            config_path=config_path,
+        )
+        rows.append(_select_fields(row, CACHE_EXPERIMENT_FIELDS, default=-1))
+
+    cache_after = _capture_cache_stats(config_path, output_dir, scenario, mode, "after", backend)
+    rows = [_select_fields(_merge_cache_stats(row, cache_after), CACHE_EXPERIMENT_FIELDS, default=-1) for row in rows]
+    path = output_dir / "ttl_priority.csv"
+    _write_csv(path, rows, CACHE_EXPERIMENT_FIELDS)
+    return path
+
+
+def _cache_pressure_prompt(session_index: int, step_index: int, segment_type: str) -> str:
+    repeated_context = "\n".join(
+        [
+            (
+                f"session={session_index} step={step_index} segment={segment_type} "
+                "AgentMem 长生命周期任务包含系统约束、工具 schema、工具结果摘要、scratchpad 推理状态、"
+                "分支上下文和 cache pressure 观测。"
+            )
+            for _ in range(120)
+        ]
+    )
+    segment_payload = {
+        "shared_prefix": "稳定系统说明和跨轮复用前缀应保留在高优先级 cache 区域。",
+        "tool_schema": "工具 schema 包含 log_analyzer、calculator、file_reader 的调用格式和结果引用规范。",
+        "tool_result": "工具返回大型日志摘要：包含 OOM、timeout、KV cache allocation failed 与 request queue backpressure。",
+        "scratchpad": "scratchpad 记录中间计划、候选工具路径和下一轮需要验证的 cache 指标。",
+        "expired_branch": "过期分支包含已经被替代的候选方案，适合在显存压力下快速释放。",
+    }[segment_type]
+    return "\n\n".join(
+        [
+            "[AgentMem Cache Pressure Benchmark]",
+            repeated_context,
+            f"[Segment Payload]\n{segment_payload}",
+            "请用三句话说明当前 segment 在 Agent-aware KV cache 管理中的保留或淘汰倾向。",
+        ]
+    )
+
+
+def _ttl_priority_prompt(segment_type: str, priority: str, ttl: int, step_index: int) -> str:
+    body = "\n".join(
+        [
+            (
+                f"ttl-priority step={step_index} segment={segment_type} priority={priority} ttl={ttl}. "
+                "AgentMem 将不同生命周期的上下文切片传给 vLLM agent_meta，用于服务端记录 block 旁路元信息。"
+            )
+            for _ in range(80)
+        ]
+    )
+    return "\n\n".join(
+        [
+            "[AgentMem TTL/Priority Benchmark]",
+            body,
+            "请说明该 segment 的生命周期、优先级和 cache pressure 下的管理策略。",
+        ]
+    )
+
+
+def _cache_pressure_items(segment_type: str, session_index: int) -> list[str]:
+    base = [f"session_{session_index}", segment_type]
+    if segment_type == "shared_prefix":
+        return [*base, "system_prompt", "stable_project_rules"]
+    if segment_type == "tool_schema":
+        return [*base, "tool_briefs", "tool_call_contract"]
+    if segment_type == "tool_result":
+        return [*base, "tool_summary", "artifact_ref"]
+    if segment_type == "scratchpad":
+        return [*base, "planning_notes", "intermediate_state"]
+    return [*base, "branch_delta", "expired_candidate"]
+
+
+def _cache_pressure_refs(segment_type: str, session_index: int, step_index: int) -> list[dict[str, Any]]:
+    if segment_type not in {"tool_result", "expired_branch"}:
+        return []
+    return [
+        {
+            "tool_name": "log_analyzer" if segment_type == "tool_result" else "branch_manager",
+            "result_id": f"{segment_type}_s{session_index}_step{step_index}",
+        }
+    ]
+
+
+def _cache_experiment_row(
+    *,
+    scenario: str,
+    task_id: str,
+    mode: str,
+    backend: str,
+    run_id: str,
+    stage: str,
+    step: int,
+    session_id: str,
+    context_id: str,
+    segment_type: str,
+    priority: str,
+    ttl: int,
+    prompt_label: str,
+    response: dict[str, Any],
+    cache_stats: dict[str, Any],
+    config_path: Path,
+) -> dict[str, Any]:
+    prompt_tokens = int(response.get("prompt_tokens", 0) or 0)
+    output_tokens = int(response.get("completion_tokens", 0) or 0)
+    total_tokens = int(response.get("total_tokens", prompt_tokens + output_tokens) or 0)
+    agent_meta = dict(response.get("agent_meta") or {})
+    success = not bool(response.get("error")) and prompt_tokens > 0
+    row = {
+        "scenario": scenario,
+        "task_id": task_id,
+        "workload_file": f"metric:{scenario}",
+        "mode": mode,
+        "memory_mode": mode,
+        "backend": backend,
+        "model": response.get("model", ""),
+        "round": step,
+        "stage": stage,
+        "prompt_tokens": prompt_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+        "latency": response.get("latency", 0.0),
+        "ttft": response.get("ttft", -1),
+        "tokens_per_second": response.get("tokens_per_second", -1),
+        "peak_gpu_memory_mb": get_peak_gpu_memory_mb(),
+        "success": success,
+        "score": 1.0 if success else 0.0,
+        "failure_reason": response.get("error", ""),
+        "passed_checks": 1 if success else 0,
+        "total_checks": 1,
+        "agent_meta_enabled": _agent_meta_enabled(config_path),
+        "agent_id": agent_meta.get("agent_id") or _agent_id_value(config_path),
+        "agent_meta_sent": bool(response.get("agent_meta_sent")),
+        "agent_meta_agent_id": agent_meta.get("agent_id", ""),
+        "agent_meta_session_id": agent_meta.get("session_id", run_id if response.get("agent_meta_sent") else ""),
+        "agent_meta_context_id": agent_meta.get("context_id", ""),
+        "agent_meta_segment_type": agent_meta.get("segment_type", ""),
+        "agent_meta_priority": agent_meta.get("priority", ""),
+        "session_id": session_id,
+        "step": step,
+        "context_id": context_id,
+        "segment_type": segment_type,
+        "priority": priority,
+        "ttl": ttl,
+        "prompt_label": prompt_label,
+    }
+    row.update(_cache_stats_row(cache_stats))
+    return row
 
 
 def _build_benchmark_agent(config_path: Path, output_dir: Path, memory_mode: str) -> AgentRuntime:
@@ -700,6 +1096,7 @@ def _build_benchmark_agent(config_path: Path, output_dir: Path, memory_mode: str
         memory_delta_extractor=build_memory_delta_extractor(config) if memory_mode in {"optimized", "event_sourced_memory"} else None,
         max_steps=int(agent_config.get("max_steps", 3)),
         enable_next_action_loop=enable_loop,
+        memory_plan_dir=output_dir / "memory_plan",
     )
 
 
@@ -714,7 +1111,15 @@ def _raw_store_max_mb(config: dict[str, Any]) -> float | None:
     return parsed if parsed > 0 else None
 
 
-def _branch_row(task: dict[str, Any], workload: Path, branch_count: int, mode: str, backend: str, config_path: Path) -> dict[str, Any]:
+def _branch_row(
+    task: dict[str, Any],
+    workload: Path,
+    branch_count: int,
+    mode: str,
+    backend: str,
+    config_path: Path,
+    output_dir: Path,
+) -> dict[str, Any]:
     start = time.perf_counter()
     shared_context = (
         str(task["input"])
@@ -749,7 +1154,21 @@ def _branch_row(task: dict[str, Any], workload: Path, branch_count: int, mode: s
         branch_saving_ratio = 0.0
         prompt_tokens = duplicated_context_tokens
 
-    response = _safe_call_prompt(config_path, "\n\n".join([shared_context[:4000], branch_text, str(task["input"])]))
+    run_id = f"branching_{mode}"
+    response = _safe_call_prompt(
+        config_path,
+        "\n\n".join([shared_context[:4000], branch_text, str(task["input"])]),
+        run_id=run_id,
+        stage="branching",
+        segment_type="shared_prefix",
+        context_id=f"{run_id}:branch_count_{branch_count}:shared_prefix",
+        priority="high",
+        branch_id=f"{root_id}:branches_{branch_count}",
+        output_dir=output_dir,
+        included_items=["shared_context", "branch_deltas", "current_query"],
+        excluded_items=["duplicated_branch_context"] if mode == "optimized" else [],
+        estimated_saved_tokens=max(0, duplicated_context_tokens - optimized_context_tokens),
+    )
     latency = response["latency"]
     ttft = response.get("ttft", -1)
     output_tokens = response.get("completion_tokens", estimate_tokens(branch_text))
@@ -825,14 +1244,77 @@ def _prefix_cache_prompt(mode: str, round_index: int) -> tuple[str, str]:
     return prompt, unstable_prefix
 
 
-def _call_prompt(config_path: Path, prompt: str) -> dict[str, Any]:
+def _call_prompt(
+    config_path: Path,
+    prompt: str,
+    *,
+    run_id: str = "agentmem_prompt_session",
+    stage: str = "benchmark",
+    segment_type: str | None = None,
+    context_id: str | None = None,
+    tool_name: str | None = None,
+    priority: str | None = None,
+    ttl: int | None = None,
+    branch_id: str | None = None,
+    output_dir: Path | None = None,
+    included_items: list[Any] | None = None,
+    external_refs: list[Any] | None = None,
+    excluded_items: list[Any] | None = None,
+    estimated_saved_tokens: int = 0,
+) -> dict[str, Any]:
     client = build_llm_client(config_path)
-    return client.chat([{"role": "user", "content": prompt}])
+    segment = segment_type or default_segment_type_for_stage(stage)
+    resolved_context_id = context_id or f"{run_id}:{stage}:{segment}"
+    agent_meta = {}
+    if hasattr(client, "build_agent_meta"):
+        agent_meta = dict(
+            client.build_agent_meta(
+                run_id=run_id,
+                stage=stage,
+                segment_type=segment,
+                context_id=resolved_context_id,
+                tool_name=tool_name,
+                priority=priority,
+                ttl=ttl,
+                branch_id=branch_id,
+            )
+            or {}
+        )
+    if output_dir is not None:
+        MemoryPlanLogger(Path(output_dir) / "memory_plan").record(
+            run_id=run_id,
+            stage=stage,
+            context_id=resolved_context_id,
+            segment_type=segment,
+            priority=priority,
+            ttl=agent_meta.get("ttl") if agent_meta else ttl,
+            included_items=included_items or [stage, segment],
+            external_refs=external_refs or [],
+            excluded_items=excluded_items or [],
+            estimated_prompt_tokens=estimate_tokens(prompt),
+            estimated_saved_tokens=estimated_saved_tokens,
+            agent_meta=agent_meta,
+        )
+    response = client.chat(
+        [{"role": "user", "content": prompt}],
+        agent_meta=agent_meta,
+        run_id=run_id,
+        stage=stage,
+        segment_type=segment,
+        context_id=resolved_context_id,
+        tool_name=tool_name,
+        priority=priority,
+        ttl=ttl,
+        branch_id=branch_id,
+    )
+    response.setdefault("agent_meta_sent", bool(agent_meta))
+    response.setdefault("agent_meta", agent_meta)
+    return response
 
 
-def _safe_call_prompt(config_path: Path, prompt: str) -> dict[str, Any]:
+def _safe_call_prompt(config_path: Path, prompt: str, **agent_meta_kwargs: Any) -> dict[str, Any]:
     try:
-        return _call_prompt(config_path, prompt)
+        return _call_prompt(config_path, prompt, **agent_meta_kwargs)
     except RuntimeError as exc:
         prompt_tokens = estimate_tokens(prompt)
         return {
@@ -1136,10 +1618,95 @@ def _select_fields(row: dict[str, Any], fields: list[str], default: Any = "") ->
     return {field: row.get(field, default) for field in fields}
 
 
+def _capture_cache_stats(config_path: Path, output_dir: Path, scenario: str, mode: str, moment: str, backend: str) -> dict[str, Any]:
+    if backend != "vllm":
+        return _unavailable_cache_stats("backend_not_vllm")
+    config = load_runtime_config(config_path)
+    vllm_config = dict(config.get("vllm") or {})
+    metrics_url = str(vllm_config.get("metrics_url") or "")
+    if not metrics_url:
+        stats = _unavailable_cache_stats("metrics_url_not_configured")
+    else:
+        timeout = int(vllm_config.get("cache_stats_timeout", 10))
+        stats = CacheStatsCollector(metrics_url=metrics_url, timeout=timeout).fetch()
+    stats["agent_meta_enabled"] = _agent_meta_enabled(config_path)
+    stats["agent_id"] = _agent_id_value(config_path)
+    path = output_dir / f"cache_stats_{_safe_name(scenario)}_{_safe_name(mode)}_{moment}.json"
+    path.write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
+    return stats
+
+
+def _cache_stats_row(stats: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "agent_meta_enabled": bool(stats.get("agent_meta_enabled", _agent_meta_enabled_value())),
+        "agent_id": str(stats.get("agent_id", _agent_id_value())),
+        "cache_stats_available": bool(stats.get("available", False)),
+        "cache_stats_unavailable_reason": stats.get("unavailable_reason", ""),
+        "cache_total_blocks": stats.get("cache_total_blocks", -1),
+        "cache_agent_sessions": stats.get("cache_agent_sessions", -1),
+        "cache_tool_result_blocks": stats.get("cache_tool_result_blocks", -1),
+        "cache_shared_prefix_blocks": stats.get("cache_shared_prefix_blocks", -1),
+        "cache_scratchpad_blocks": stats.get("cache_scratchpad_blocks", -1),
+        "cache_expired_branch_blocks": stats.get("cache_expired_branch_blocks", -1),
+    }
+
+
+def _merge_cache_stats(row: dict[str, Any], stats: dict[str, Any]) -> dict[str, Any]:
+    output = dict(row)
+    output.update(_cache_stats_row(stats))
+    return output
+
+
+def _unavailable_cache_stats(reason: str) -> dict[str, Any]:
+    return {
+        "available": False,
+        "unavailable_reason": reason,
+        "cache_total_blocks": -1,
+        "cache_agent_sessions": -1,
+        "cache_tool_result_blocks": -1,
+        "cache_shared_prefix_blocks": -1,
+        "cache_scratchpad_blocks": -1,
+        "cache_expired_branch_blocks": -1,
+    }
+
+
+def _safe_name(value: str) -> str:
+    return str(value).replace("-", "_").replace("/", "_")
+
+
+def _agent_meta_enabled(config_path: Path) -> bool:
+    return _agent_meta_enabled_value(load_runtime_config(config_path))
+
+
+def _agent_meta_enabled_value(config: dict[str, Any] | None = None) -> bool:
+    env_value = os.environ.get("AGENTMEM_ENABLE_AGENT_META")
+    if env_value is not None:
+        return env_value.strip().lower() in {"1", "true", "yes", "on"}
+    vllm_config = dict((config or {}).get("vllm") or {})
+    value = vllm_config.get("enable_agent_meta", False)
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
+def _agent_id_value(config_path: Path | None = None) -> str:
+    env_value = os.environ.get("AGENTMEM_AGENT_ID")
+    if env_value:
+        return env_value
+    config = load_runtime_config(config_path) if config_path is not None else None
+    vllm_config = dict((config or {}).get("vllm") or {})
+    return str(vllm_config.get("agent_id", ""))
+
+
+def _default_agent_id(scenario: str, agent_meta_enabled: bool | None) -> str:
+    mode = "config" if agent_meta_enabled is None else ("on" if agent_meta_enabled else "off")
+    return f"agentmem_{_safe_name(scenario or 'all')}_{mode}_{int(time.time())}"
+
+
 def _write_csv(path: Path, rows: Iterable[dict[str, Any]], fieldnames: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer = csv.DictWriter(file, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -1211,3 +1778,31 @@ def _override_backend(backend: str):
             os.environ.pop("AGENTMEM_LLM_BACKEND", None)
         else:
             os.environ["AGENTMEM_LLM_BACKEND"] = old_value
+
+
+@contextmanager
+def _override_agent_meta(enabled: bool | None):
+    old_value = os.environ.get("AGENTMEM_ENABLE_AGENT_META")
+    if enabled is not None:
+        os.environ["AGENTMEM_ENABLE_AGENT_META"] = "true" if enabled else "false"
+    try:
+        yield
+    finally:
+        if old_value is None:
+            os.environ.pop("AGENTMEM_ENABLE_AGENT_META", None)
+        else:
+            os.environ["AGENTMEM_ENABLE_AGENT_META"] = old_value
+
+
+@contextmanager
+def _override_agent_id(agent_id: str | None):
+    old_value = os.environ.get("AGENTMEM_AGENT_ID")
+    if agent_id:
+        os.environ["AGENTMEM_AGENT_ID"] = str(agent_id)
+    try:
+        yield
+    finally:
+        if old_value is None:
+            os.environ.pop("AGENTMEM_AGENT_ID", None)
+        else:
+            os.environ["AGENTMEM_AGENT_ID"] = old_value

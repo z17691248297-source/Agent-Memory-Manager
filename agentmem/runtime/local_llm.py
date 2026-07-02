@@ -6,8 +6,8 @@ import time
 from agentmem.memory.memory_object import estimate_tokens
 
 
-class MockLLMClient:
-    """无模型、无 GPU 环境下的固定响应后端。"""
+class LocalDeterministicLLMClient:
+    """Deterministic local client used by the test suite."""
 
     model = "local-test"
 
@@ -16,14 +16,13 @@ class MockLLMClient:
         messages: list[dict[str, str]],
         temperature: float = 0.2,
         max_tokens: int = 512,
+        **_: object,
     ) -> dict:
         start = time.perf_counter()
         prompt = "\n".join(message.get("content", "") for message in messages)
         prompt_tokens = estimate_tokens(prompt)
         lower_prompt = prompt.lower()
 
-        # Keep test answers deterministic while exposing the same signals that
-        # task evaluators check on a real backend.
         if "constraint_alpha_001" in lower_prompt:
             content = "constraint_alpha_001：AgentMem 必须优先进行工具结果外置，并保留任务成功率。"
         elif all(keyword in lower_prompt for keyword in ["baseline", "optimized"]) and (

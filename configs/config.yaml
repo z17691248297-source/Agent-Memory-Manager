@@ -6,7 +6,7 @@ llm:
   api_key_env: AGENTMEM_API_KEY
   temperature: 0
   max_tokens: 512
-  timeout: 120
+  timeout: 300
   max_retries: 0
 
 extractor:
@@ -26,8 +26,12 @@ agent:
   enable_next_action_loop: true
 
 vllm:
-  metrics_url: http://47.108.145.21/metrics
+  metrics_url: http://47.108.145.21/v1/agentmem/cache_stats
   enable_prefix_caching: true
+  enable_agent_meta: true
+  agent_id: agentmem_benchmark
+  default_ttl: 300
+  cache_stats_timeout: 10
 
 environment:
   model_server_os: Ubuntu 22.04.5 LTS

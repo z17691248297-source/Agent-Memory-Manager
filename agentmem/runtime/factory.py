@@ -63,6 +63,7 @@ def build_agent(
         memory_delta_extractor=build_memory_delta_extractor(config) if mode == "optimized" else None,
         max_steps=int(agent_config.get("max_steps", 3)),
         enable_next_action_loop=enable_loop,
+        memory_plan_dir=results_root / "memory_plan",
     )
 
 

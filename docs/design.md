@@ -1,8 +1,8 @@
 # AgentMem Design
 
-AgentMem 是通用轻量 Agent Runtime + Memory Manager。它用于复现和评估智能体工作流中的上下文膨胀问题，不是完整 AutoGPT，也不是通用 Web Agent，不修改 vLLM kernel。
+AgentMem 是通用轻量 Agent Runtime + Memory Manager。它用于复现和评估智能体工作流中的上下文膨胀问题，并将 Event-Sourced Memory 作为 Agent 侧内存管理优化机制。
 
-本项目不是完整 AutoGPT，也不是通用 Web Agent。本项目实现的是支持典型智能体工作流的轻量 Agent Runtime，并将 Event-Sourced Memory 作为 Agent 侧内存管理优化机制。
+项目覆盖多轮会话、工具调用、分支推理、稳定 prefix、工具结果外置、Agent-aware `agent_meta` 传递和 vLLM cache_stats 观测。
 
 ## Architecture
 

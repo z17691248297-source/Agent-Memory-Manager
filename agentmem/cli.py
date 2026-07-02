@@ -98,7 +98,17 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark = sub.add_parser("benchmark", help="run AgentMem benchmark scenarios")
     benchmark.add_argument(
         "--scenario",
-        choices=["tool-heavy", "long-session", "multi-stage", "branching", "prefix-cache", "ablation", "all"],
+        choices=[
+            "tool-heavy",
+            "long-session",
+            "multi-stage",
+            "branching",
+            "prefix-cache",
+            "ablation",
+            "cache-pressure",
+            "ttl-priority",
+            "all",
+        ],
         default="all",
     )
     benchmark.add_argument("--all", action="store_true", help="run every benchmark scenario")
@@ -120,8 +130,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
     )
     benchmark.add_argument("--repeat", type=int, default=None)
+    benchmark.add_argument("--sessions", type=int, default=4, help="session count for cache-pressure benchmark")
+    benchmark.add_argument("--agent-id", default=None, help="override generated vLLM agent_meta agent_id")
     benchmark.add_argument("--output", type=Path, default=None)
     benchmark.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    benchmark.add_argument(
+        "--agent-meta",
+        choices=["on", "off"],
+        default=None,
+        help="enable or disable vLLM agent_meta extra_body for this benchmark run",
+    )
 
     report = sub.add_parser("report", help="generate results/report.md from benchmark CSVs")
     report.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS)
@@ -377,6 +395,9 @@ def benchmark_command(args: argparse.Namespace) -> int:
             repeat=int(args.repeat if args.repeat is not None else benchmark_config.get("repeat", 1)),
             output_dir=Path(args.output or benchmark_config.get("output_dir", DEFAULT_RESULTS)),
             config_path=args.config,
+            agent_meta_enabled=_agent_meta_arg(args.agent_meta),
+            sessions=max(1, int(args.sessions or 1)),
+            agent_id=args.agent_id,
         )
         result = run_benchmark(options)
     except RuntimeError as exc:
@@ -606,6 +627,14 @@ def _normalize_backend(backend: str | None) -> str:
     if backend == "openai":
         return "openai_compatible"
     return backend
+
+
+def _agent_meta_arg(value: str | None) -> bool | None:
+    if value == "on":
+        return True
+    if value == "off":
+        return False
+    return None
 
 
 if __name__ == "__main__":

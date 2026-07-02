@@ -2,7 +2,7 @@
 
 AgentMem benchmark 用固定任务集评估 baseline 与 optimized Agent 内存路径。目标是在相同硬件配置、相同模型服务、相同 workload 下比较 prompt tokens、质量指标和 vLLM 真实推理指标。
 
-本项目不是完整 AutoGPT，也不是通用 Web Agent。本项目实现的是支持典型智能体工作流的轻量 Agent Runtime，并将 Event-Sourced Memory 作为 Agent 侧内存管理优化机制。
+Benchmark 覆盖工具密集、长会话、多阶段、分支、prefix-cache、ablation、cache-pressure 和 ttl-priority 场景，用于展示 AgentMem 在上下文构造和 vLLM Agent-aware cache 管理观测上的效果。
 
 ## Backend
 
@@ -209,4 +209,4 @@ python -m agentmem report
 - full_history / summary_memory / event_sourced_memory 对比
 - 已配置模型 backend 结果
 - success rate / score
-- 当前局限性
+- 指标说明

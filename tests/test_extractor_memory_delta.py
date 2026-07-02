@@ -14,7 +14,7 @@ from agentmem.tools.tool_registry import build_default_registry
 class PlainLLM:
     model = "plain-main"
 
-    def chat(self, messages: list[dict[str, str]]) -> dict:
+    def chat(self, messages: list[dict[str, str]], **_: object) -> dict:
         return {
             "content": "已完成日志判断。",
             "latency": 0.01,

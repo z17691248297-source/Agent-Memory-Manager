@@ -1,0 +1,94 @@
+{
+  "available": true,
+  "unavailable_reason": "",
+  "metrics_url": "http://47.108.145.21/v1/agentmem/cache_stats",
+  "raw": {
+    "generated_at": 1782986862.7469683,
+    "num_agent_blocks": 1068,
+    "sessions": {
+      "task_001": {
+        "cached_blocks": 158,
+        "accessed_blocks": 1308,
+        "evicted_blocks": 157
+      },
+      "task_002": {
+        "cached_blocks": 301,
+        "evicted_blocks": 301
+      },
+      "task_unique_1782459993": {
+        "cached_blocks": 152,
+        "evicted_blocks": 152
+      },
+      "run_1782986379073_44cd6758": {
+        "cached_blocks": 824,
+        "accessed_blocks": 3260
+      },
+      "event_run_1782986384912_8ef74b85": {
+        "cached_blocks": 61,
+        "accessed_blocks": 76
+      },
+      "run_1782986627119_1f350e07": {
+        "cached_blocks": 9
+      },
+      "event_run_1782986631624_018456ba": {
+        "cached_blocks": 42
+      },
+      "agentmem_prompt_session": {
+        "cached_blocks": 79,
+        "accessed_blocks": 7
+      },
+      "run_1782986848299_f52a22b4": {
+        "cached_blocks": 9
+      },
+      "event_run_1782986854590_7a8f6ad9": {
+        "cached_blocks": 43
+      }
+    },
+    "segments": {
+      "tool_result": {
+        "cached_blocks": 1091,
+        "accessed_blocks": 4644,
+        "evicted_blocks": 128
+      },
+      "tool_schema": {
+        "cached_blocks": 356,
+        "evicted_blocks": 330
+      },
+      "mcp_result": {
+        "cached_blocks": 152,
+        "evicted_blocks": 152
+      },
+      "user_message": {
+        "cached_blocks": 79,
+        "accessed_blocks": 7
+      }
+    },
+    "eviction_reasons": {
+      "ttl_expired": 280,
+      "cache_pressure": 330
+    },
+    "active_blocks_by_session": {
+      "task_001": 1,
+      "run_1782986379073_44cd6758": 824,
+      "event_run_1782986384912_8ef74b85": 61,
+      "run_1782986627119_1f350e07": 9,
+      "event_run_1782986631624_018456ba": 42,
+      "agentmem_prompt_session": 79,
+      "run_1782986848299_f52a22b4": 9,
+      "event_run_1782986854590_7a8f6ad9": 43
+    },
+    "active_blocks_by_segment": {
+      "tool_result": 963,
+      "tool_schema": 26,
+      "user_message": 79
+    },
+    "stats_path": "/tmp/agentmem_cache_stats.json"
+  },
+  "cache_total_blocks": 1068,
+  "cache_agent_sessions": 10,
+  "cache_tool_result_blocks": 1091,
+  "cache_shared_prefix_blocks": -1,
+  "cache_scratchpad_blocks": -1,
+  "cache_expired_branch_blocks": -1,
+  "agent_meta_enabled": true
+}
