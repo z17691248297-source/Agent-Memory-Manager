@@ -18,18 +18,18 @@ AgentMem 是通用轻量 Agent Runtime + Memory Manager，用于让 Agent 通过
 | main_llm_backend | vllm |
 | main_llm_base_url | http://47.108.145.21/v1 |
 | main_llm_max_model_len | 16384 |
-| agent_meta_enabled |  |
-| cache_stats_available |  |
+| agent_meta_enabled | True |
+| cache_stats_available | True |
 | cache_stats_unavailable_reason |  |
 | extractor_backend | vllm |
 | extractor_model | Qwen3.5-9B |
 | extractor_base_url | http://47.108.145.21:2223/v1 |
 | extractor_enabled | True |
-| extractor_effective | True |
-| extractor_status | active |
-| extractor_success_count | 10 |
-| extractor_failure_count | 15 |
-| scenarios | tool_heavy, long_session, multi_stage, branching, prefix_cache, ablation |
+| extractor_effective | False |
+| extractor_status | unavailable |
+| extractor_success_count | -35 |
+| extractor_failure_count | -26 |
+| scenarios | tool_heavy, long_session, multi_stage, branching, prefix_cache, ablation, agent_meta, cache_pressure, ttl_priority |
 | mode | baseline, event_sourced_memory, full_history, optimized, summary_memory |
 | repeat | 1 |
 | recent_rounds | 6 |
@@ -56,8 +56,8 @@ AgentMem 实现了支持典型智能体工作流的轻量 Agent Runtime，并将
 | branching | benchmarks/tasks/branching.jsonl | 1 |
 | prefix-cache | metric:prefix-cache | 12 |
 | ablation | metric:ablation | 6 |
-| cache-pressure | metric:cache-pressure | 0 |
-| ttl-priority | metric:ttl-priority | 0 |
+| cache-pressure | metric:cache-pressure | 40 |
+| ttl-priority | metric:ttl-priority | 5 |
 
 ## 5. Hardware
 
@@ -91,6 +91,10 @@ AgentMem 实现了支持典型智能体工作流的轻量 Agent Runtime，并将
 | ablation | tool_externalization_only | 1 | 100.0000 | 1.0000 |
 | ablation | history_summary_only | 1 | 100.0000 | 1.0000 |
 | ablation | full_optimized | 1 | 100.0000 | 1.0000 |
+| agent_meta | baseline | 2 | 100.0000 | 1.0000 |
+| agent_meta | optimized | 2 | 100.0000 | 1.0000 |
+| cache_pressure | sessions_4 | 40 | 100.0000 | 1.0000 |
+| ttl_priority | ttl_priority | 5 | 100.0000 | 1.0000 |
 
 ## Configured Model Backend Results
 
@@ -98,8 +102,8 @@ AgentMem 实现了支持典型智能体工作流的轻量 Agent Runtime，并将
 
 | scenario | mode | prompt_tokens | state_view_tokens | latency | ttft | tokens_per_second | peak_gpu_memory_mb | prefix_cache_hit_rate | cached_prompt_tokens | kv_cache_usage | cache_total_blocks | cache_agent_sessions | cache_tool_result_blocks | cache_shared_prefix_blocks | cache_scratchpad_blocks | cache_expired_branch_blocks | success_rate | score |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tool-heavy | baseline | 13697.0000 | 0.0000 | 4.1937 | 1.6769 | 37.2935 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | 100.0000 | 1.0000 |
-| tool-heavy | optimized | 2086.0000 | 0.0000 | 11.7396 | 0.2962 | 61.4341 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | 100.0000 | 1.0000 |
+| tool-heavy | baseline | 13697.0000 | 0.0000 | 4.4211 | 1.9318 | 35.5451 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | 1069.0000 | 10.0000 | 1092.0000 | -1.0000 | -1.0000 | -1.0000 | 100.0000 | 1.0000 |
+| tool-heavy | optimized | 1740.6667 | 0.0000 | 9.5535 | 0.7907 | 50.8155 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | 1069.0000 | 10.0000 | 1092.0000 | -1.0000 | -1.0000 | -1.0000 | 100.0000 | 1.0000 |
 | long-session | full_history | 2322.3400 | 0.0000 | 0.8237 | 0.3195 | 39.3515 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | 98.0000 | 0.9950 |
 | long-session | summary_memory | 1665.9400 | 0.0000 | 1.3753 | 0.5063 | 41.2346 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | 98.0000 | 0.9917 |
 | long-session | event_sourced_memory | 2503.6000 | 1028.8400 | 3.4042 | 0.4822 | 51.6763 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | 98.0000 | 0.9933 |
@@ -116,22 +120,42 @@ AgentMem 实现了支持典型智能体工作流的轻量 Agent Runtime，并将
 | ablation | tool_externalization_only | 1026.0000 | 0.0000 | 4.4873 | 0.4158 | 0.0000 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | 100.0000 | 1.0000 |
 | ablation | history_summary_only | 6568.0000 | 0.0000 | 2.8381 | 1.8770 | 0.0000 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | 100.0000 | 1.0000 |
 | ablation | full_optimized | 748.0000 | 0.0000 | 2.9360 | 0.4438 | 0.0000 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | 100.0000 | 1.0000 |
+| cache-pressure | sessions_4 | 5483.8000 | 0.0000 | 2.5919 | 0.6863 | 39.3827 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | 7999.0000 | 14.0000 | 2483.0000 | 1388.0000 | 1384.0000 | 1381.0000 | 100.0000 | 1.0000 |
+| ttl-priority | ttl_priority | 3958.0000 | 0.0000 | 11.0299 | 0.9543 | 45.9545 | -1.0000 | 0.0000 | 0.0000 | 0.0000 | 8823.0000 | 15.0000 | 2758.0000 | 1672.0000 | 1655.0000 | 1648.0000 | 100.0000 | 1.0000 |
 
 ## AgentMeta on/off 对比
 
-暂无 agent_meta 实验数据。
+| agent_meta_enabled | scenario | prompt_tokens | latency | ttft | tokens_per_second | cache_total_blocks | cache_agent_sessions | cache_tool_result_blocks | cache_shared_prefix_blocks | cache_scratchpad_blocks | cache_expired_branch_blocks | success_rate | score |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| True | tool-heavy | 7632.5000 | 7.1939 | 2.0464 | 34.5058 | 1068.0000 | 10.0000 | 1091.0000 | -1.0000 | -1.0000 | -1.0000 | 100.0000 | 1.0000 |
+| False | tool-heavy | 7632.5000 | 5.8013 | 1.0509 | 45.6713 | 1069.0000 | 10.0000 | 1092.0000 | -1.0000 | -1.0000 | -1.0000 | 100.0000 | 1.0000 |
+| True | cache-pressure | 5483.8000 | 2.7457 | 0.9550 | 36.7977 | 7996.0000 | 14.0000 | 2483.0000 | 1388.0000 | 1384.0000 | 1378.0000 | 100.0000 | 1.0000 |
+| False | cache-pressure | 5483.8000 | 2.4380 | 0.4175 | 41.9676 | 7999.0000 | 14.0000 | 2483.0000 | 1388.0000 | 1384.0000 | 1381.0000 | 100.0000 | 1.0000 |
+| True | ttl-priority | 3958.0000 | 11.0299 | 0.9543 | 45.9545 | 8823.0000 | 15.0000 | 2758.0000 | 1672.0000 | 1655.0000 | 1648.0000 | 100.0000 | 1.0000 |
 
 ## Cache pressure benchmark
 
-暂无 cache-pressure 数据。
+| segment_type | sessions | prompt_tokens | latency | ttft | tokens_per_second | cache_total_blocks | cache_agent_sessions | cache_tool_result_blocks | cache_shared_prefix_blocks | cache_scratchpad_blocks | cache_expired_branch_blocks | success_rate | score |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| shared_prefix | 4 | 5483.0000 | 2.8300 | 0.8734 | 38.2229 | 7999.0000 | 14.0000 | 2483.0000 | 1388.0000 | 1384.0000 | 1381.0000 | 100.0000 | 1.0000 |
+| tool_schema | 4 | 5484.0000 | 2.4765 | 0.6047 | 40.9353 | 7999.0000 | 14.0000 | 2483.0000 | 1388.0000 | 1384.0000 | 1381.0000 | 100.0000 | 1.0000 |
+| tool_result | 4 | 5486.0000 | 2.8218 | 0.7067 | 41.1963 | 7999.0000 | 14.0000 | 2483.0000 | 1388.0000 | 1384.0000 | 1381.0000 | 100.0000 | 1.0000 |
+| scratchpad | 4 | 5485.0000 | 2.4917 | 0.6162 | 38.9998 | 7999.0000 | 14.0000 | 2483.0000 | 1388.0000 | 1384.0000 | 1381.0000 | 100.0000 | 1.0000 |
+| expired_branch | 4 | 5481.0000 | 2.3393 | 0.6303 | 37.5590 | 7999.0000 | 14.0000 | 2483.0000 | 1388.0000 | 1384.0000 | 1381.0000 | 100.0000 | 1.0000 |
 
 ## TTL/Priority benchmark
 
-暂无 ttl-priority 数据。
+| segment_type | priority | ttl | prompt_tokens | latency | ttft | cache_total_blocks | cache_tool_result_blocks | cache_shared_prefix_blocks | cache_scratchpad_blocks | cache_expired_branch_blocks | success_rate | score |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| shared_prefix | high | 3600 | 4054.0000 | 9.8945 | 1.4572 | 8823.0000 | 2758.0000 | 1672.0000 | 1655.0000 | 1648.0000 | 100.0000 | 1.0000 |
+| tool_schema | high | 1800 | 4054.0000 | 9.3125 | 0.8518 | 8823.0000 | 2758.0000 | 1672.0000 | 1655.0000 | 1648.0000 | 100.0000 | 1.0000 |
+| tool_result | low | 120 | 3974.0000 | 10.7067 | 1.0919 | 8823.0000 | 2758.0000 | 1672.0000 | 1655.0000 | 1648.0000 | 100.0000 | 1.0000 |
+| scratchpad | low | 60 | 3894.0000 | 12.5060 | 0.6730 | 8823.0000 | 2758.0000 | 1672.0000 | 1655.0000 | 1648.0000 | 100.0000 | 1.0000 |
+| expired_branch | drop | 1 | 3814.0000 | 12.7296 | 0.6976 | 8823.0000 | 2758.0000 | 1672.0000 | 1655.0000 | 1648.0000 | 100.0000 | 1.0000 |
 
 ## cache_stats scope
 
-- cache_stats_scope: unavailable. 当前 `/v1/agentmem/cache_stats` 采集的是服务端全局 cache 视图；若服务端未来支持 by_agent/by_session 过滤，可用 summary.csv 中记录的 agent_id 过滤本次实验。
+- cache_stats_scope: global cache view. 当前 `/v1/agentmem/cache_stats` 采集的是服务端全局 cache 视图；若服务端未来支持 by_agent/by_session 过滤，可用 summary.csv 中记录的 agent_id 过滤本次实验。
 - off 结果中如出现 expired_branch/tool_result/shared_prefix blocks，含义是全局历史缓存中已有这些 segment 的 block；off 请求本身没有携带 agent_meta，具体以 agent_meta_sent 和 audit_agent_meta.py 审计结果为准。
 
 ## cache_stats 可用性
@@ -144,10 +168,16 @@ AgentMem 实现了支持典型智能体工作流的轻量 Agent Runtime，并将
 | branching |  |  | 0 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 |
 | prefix-cache |  |  | 0 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 |
 | ablation |  |  | 0 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 | -1.0000 |
+| tool-heavy | True |  | 4 | 1069.0000 | 10.0000 | 1092.0000 | -1.0000 | -1.0000 | -1.0000 |
+| cache-pressure | True |  | 40 | 7999.0000 | 14.0000 | 2483.0000 | 1388.0000 | 1384.0000 | 1381.0000 |
+| ttl-priority | True |  | 5 | 8823.0000 | 15.0000 | 2758.0000 | 1672.0000 | 1655.0000 | 1648.0000 |
 
 ## audit_agent_meta.py 审计摘要
 
-暂无可审计的 agent_meta 行。
+| agent_meta_enabled | rows | agent_meta_sent_true | agent_meta_sent_false | empty_segment_rows | segment_type_distribution |
+| --- | --- | --- | --- | --- | --- |
+| True | 27 | 27 | 0 | 0 | expired_branch:5; scratchpad:5; shared_prefix:5; tool_result:7; tool_schema:5 |
+| False | 22 | 0 | 22 | 22 | <empty>:22 |
 
 ## agent_meta segment 映射
 
@@ -264,8 +294,8 @@ Prompt token reduction: 84.77%.
 
 - Token 降低最明显的场景：tool_heavy，prompt token reduction 约 84.77%。
 - 工具上下文膨胀来源：tool-heavy 场景最大 raw_tool_tokens 为 6112。
-- 当前报告聚合任务成功率：96.81%。
+- 当前报告聚合任务成功率：97.47%。
 - Ablation 中 prompt_tokens 最低的配置：full_optimized。
 - 真实 vLLM prefix 指标：当前结果未包含可用兼容指标，相关字段保持 -1。
-- Agent-aware cache_stats：当前不可用或未返回目标字段，相关字段保持 -1。
+- Agent-aware cache_stats：已读取到 /v1/agentmem/cache_stats。
 - Agent-aware 实验通过 agent_meta 将 session、context、segment、priority 和 ttl 显式传递给 vLLM 服务端，支持长生命周期、多工具、多 session 的 cache 管理观测。

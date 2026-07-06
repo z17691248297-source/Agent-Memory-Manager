@@ -33,6 +33,7 @@ def summarize_results(results_dir: str | Path = "results", config_path: str | Pa
 
 
 def _load_frames(results: Path) -> dict[str, Rows]:
+    final = results / "final"
     return {
         "tool_heavy": _concat_existing(results, ["tool_heavy_baseline.csv", "tool_heavy_optimized.csv"]),
         "long_session": _concat_existing(
@@ -54,8 +55,24 @@ def _load_frames(results: Path) -> dict[str, Rows]:
         "branching": _read_csv(results / "branch_benchmark.csv"),
         "prefix_cache": _concat_existing(results, ["prefix_cache_baseline.csv", "prefix_cache_optimized.csv"]),
         "ablation": _read_csv(results / "ablation.csv"),
-        "cache_pressure": _read_csv(results / "cache_pressure.csv"),
-        "ttl_priority": _read_csv(results / "ttl_priority.csv"),
+        "agent_meta": _concat_existing(
+            final,
+            [
+                "agent_meta_on/tool_heavy_baseline.csv",
+                "agent_meta_on/tool_heavy_optimized.csv",
+                "agent_meta_off/tool_heavy_baseline.csv",
+                "agent_meta_off/tool_heavy_optimized.csv",
+            ],
+        ),
+        "cache_pressure": _concat_existing(
+            results,
+            [
+                "cache_pressure.csv",
+                "final/cache_pressure_on/cache_pressure.csv",
+                "final/cache_pressure_off/cache_pressure.csv",
+            ],
+        ),
+        "ttl_priority": _concat_existing(results, ["ttl_priority.csv", "final/ttl_priority_on/ttl_priority.csv"]),
     }
 
 
