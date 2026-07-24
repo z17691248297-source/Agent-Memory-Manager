@@ -11,6 +11,7 @@ benchmarks/results/
 results/exp_*/
 results/final-release/
 results/final/
+results/openeuler-smoke/
 results/*.csv
 results/event_log/
 results/event_memory_snapshots/

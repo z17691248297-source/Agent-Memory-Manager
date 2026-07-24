@@ -25,6 +25,14 @@ python -m agentmem report
 bash scripts/run_all.sh
 ```
 
+openEuler 用户态容器 smoke：
+
+```bash
+DOCKER_CMD='sudo docker' bash scripts/run_openeuler_smoke.sh
+```
+
+该命令只跑一次 `tool-heavy` 真实模型 smoke，用于证明 AgentMem 客户端可在 openEuler 容器中安装、启动、连接远程 vLLM 并生成结果；它不替代完整 release benchmark。
+
 正式实验前先备份并重建结果目录，避免新旧结果混在一起：
 
 ```bash

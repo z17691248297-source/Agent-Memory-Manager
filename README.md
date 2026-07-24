@@ -121,7 +121,15 @@ CSV 会记录：
 
 ## openEuler / openKylin
 
-部署说明见 [docs/openeuler_deployment.md](docs/openeuler_deployment.md)。如果模型机当前是 Ubuntu，也可以按同一流程启动 vLLM；正式文档以 openEuler 22.03 LTS / 24.03 LTS 和 openKylin 环境为目标。
+部署说明见 [docs/openeuler_deployment.md](docs/openeuler_deployment.md)。AgentMem 客户端可在 openEuler 用户态容器中运行，并通过 OpenAI-compatible API 连接远程 vLLM 模型服务；GPU 模型服务可以独立部署在模型节点上。
+
+最小国产 OS 兼容性验证：
+
+```bash
+DOCKER_CMD='sudo docker' bash scripts/run_openeuler_smoke.sh
+```
+
+该脚本会构建/复用 openEuler 容器镜像，验证 AgentMem CLI，并用真实远程 vLLM 服务跑一次 `tool-heavy` smoke。输出位于 `results/openeuler-smoke/`，其中 `environment.json` 应包含 `openEuler_userspace_container_verified=true`。完整性能 Benchmark 仍以最终 release 结果目录为准。
 
 ## 测试
 
@@ -173,5 +181,5 @@ flowchart LR
 | vLLM server-side metadata parsing | Server patch required |
 | vLLM priority/TTL eviction enforcement | Experimental/server patch required |
 | Real GPU/KV metrics from model server | Implemented when endpoints are available |
-| openEuler userspace container | Implemented; verify via `environment.json` |
+| openEuler userspace container | Implemented; verify with `scripts/run_openeuler_smoke.sh` |
 | openEuler native GPU deployment | Planned; not claimed by Dockerfile |
