@@ -1,0 +1,7 @@
+ens=601 decode_step=25
+2026-06-20T12:58:00Z INFO request=10 prefill_tokens=602 decode_step=26
+2026-06-20T12:59:00Z INFO request=11 prefill_tokens=603 decode_step=27
+2026-06-20T12:00:00Z ERROR KV cache allocation failed: no free blocks
+2026-06-20T12:01:00Z INFO request=13 prefill_tokens=605 decode_step=29
+2026-06-20T12:02:00Z INFO request=14 prefill_tokens=606 decode_step=30
+2026-06-20T12:03:00Z INFO request=15 prefill_tokens=607 decode_step=31

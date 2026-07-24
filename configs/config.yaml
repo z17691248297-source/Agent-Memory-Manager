@@ -1,44 +1,55 @@
+# Safe default configuration. Runtime values are resolved from environment.
+# For quick local checks use configs/config.smoke.yaml; for release runs use
+# configs/config.release.yaml.
+
 llm:
-  backend: vllm
-  model: /home/vip/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28
-  base_url: http://47.108.145.21/v1
-  api_key: EMPTY
+  backend: ${AGENTMEM_LLM_BACKEND}
+  model: ${AGENTMEM_MODEL}
+  base_url: ${AGENTMEM_LLM_BASE_URL}
   api_key_env: AGENTMEM_API_KEY
   temperature: 0
   max_tokens: 512
-  timeout: 300
+  timeout: 120
   max_retries: 0
 
 extractor:
-  enabled: true
+  enabled: ${AGENTMEM_EXTRACTOR_ENABLED}
   backend: vllm
-  base_url: http://47.108.145.21:2223/v1
-  api_key: EMPTY
-  model: Qwen3.5-9B
+  base_url: ${AGENTMEM_EXTRACTOR_BASE_URL}
+  api_key_env: AGENTMEM_EXTRACTOR_API_KEY
+  model: ${AGENTMEM_EXTRACTOR_MODEL}
   temperature: 0
   max_tokens: 1024
   timeout: 120
   max_retries: 0
   healthcheck_timeout: 3
+  extra_body:
+    agent_meta:
+      agent_id: extractor-qwen25-7b
+      session_id: extractor-default
+      task_type: extraction
+      quality_gate: true
+      require_json: true
+      required_json_keys:
+        - memory_delta
 
 agent:
   max_steps: 3
   enable_next_action_loop: true
 
 vllm:
-  metrics_url: http://47.108.145.21/v1/agentmem/cache_stats
+  metrics_url: ${AGENTMEM_VLLM_METRICS_URL}
+  cache_stats_url: ${AGENTMEM_CACHE_STATS_URL}
   enable_prefix_caching: true
   enable_agent_meta: true
   agent_id: agentmem_benchmark
   default_ttl: 300
   cache_stats_timeout: 10
+  same_host_gpu: false
 
-environment:
-  model_server_os: Ubuntu 22.04.5 LTS
-  main_llm_service: 8020 via public /v1 proxy
-  main_llm_max_model_len: 16384
-  extractor_service: 9000
-  extractor_max_model_len: 32768
+cache_isolation:
+  strategy: snapshot_delta
+  allow_contaminated: false
 
 memory:
   recent_rounds: 6
@@ -60,5 +71,16 @@ tools:
   max_output_chars: 20000
 
 benchmark:
-  output_dir: results
+  output_dir: ${AGENTMEM_OUTPUT_DIR}
   repeat: 1
+  warmup: 0
+  seed: ${AGENTMEM_SEED}
+  order: randomized
+  scenarios:
+    - tool-heavy
+  models:
+    - default
+  concurrency_levels:
+    - 1
+    - 2
+  release: false

@@ -34,13 +34,17 @@ class MemoryPlanLogger:
         path = self.directory / f"{_safe_name(run_id or 'agentmem_session')}.jsonl"
         payload = {
             "recorded_at": time.time(),
+            "experiment_id": str((agent_meta or {}).get("experiment_id") or os.getenv("AGENTMEM_EXPERIMENT_ID", "")),
             "run_id": str(run_id),
+            "session_id": str((agent_meta or {}).get("session_id") or run_id),
             "agent_id": str((agent_meta or {}).get("agent_id") or os.getenv("AGENTMEM_AGENT_ID", "")),
             "stage": str(stage),
             "context_id": str(context_id),
             "segment_type": str(segment_type),
             "priority": "" if priority is None else str(priority),
-            "ttl": -1 if ttl is None else int(ttl),
+            "ttl": "" if ttl is None else int(ttl),
+            "ttl_seconds": "" if ttl is None else int(ttl),
+            "cache_namespace": str((agent_meta or {}).get("cache_namespace", "")),
             "included_items": _jsonable_list(included_items or []),
             "external_refs": _jsonable_list(external_refs or []),
             "excluded_items": _jsonable_list(excluded_items or []),

@@ -6,7 +6,7 @@
 
 ```bash
 docker run -it --name agentmem-openeuler \
-  -v /home/zb/vllm:/workspace/vllm \
+  -v <repo-root>:/workspace/vllm \
   -w /workspace/vllm \
   openeuler/openeuler:22.03-lts bash
 ```
@@ -31,13 +31,13 @@ dnf install -y python3 python3-pip curl
 主 Agent 最终回答使用 8000 端口 Qwen2.5-7B-Instruct 服务：
 
 ```bash
-curl http://47.108.145.21/v1/models
+curl ${AGENTMEM_LLM_BASE_URL}/models
 ```
 
 memory extraction 只用于生成结构化 `memory_delta` / state update。当前 9000 端口模型服务通过公网 2223 端口反向代理访问：
 
 ```bash
-curl http://47.108.145.21:2223/v1/models
+curl ${AGENTMEM_EXTRACTOR_BASE_URL}/models
 ```
 
 不要把 extractor 服务用于最终回答。最终回答仍由 `llm.base_url` 指向的 8000 服务生成。
@@ -72,10 +72,19 @@ python -m agentmem report
 - `extractor_backend`
 - `official_os_compatibility_run`
 
-如果 client 在 openEuler 容器内运行，报告标注 `official_os_compatibility_run: true`。如果是在 WSL2 或普通 Ubuntu 开发环境运行，报告标注为 development run。
+如果 client 在 openEuler 容器内运行，报告标注 `openEuler_userspace_container_verified: true`。如果是在 WSL2 或普通 Ubuntu 开发环境运行，报告标注为 development run。
 
 ## 当前远程部署说明
 
-当前远程模型机为 Ubuntu 22.04.5 LTS，GPU 为 RTX 4090。8000 服务是主 Agent 推理服务，9000 服务是 extractor 服务。openEuler 容器运行 AgentMem client 和 benchmark，并在报告中标注 client 侧 openEuler 兼容性。
+推荐架构是 openEuler 容器运行 AgentMem client 和 benchmark，通过环境变量连接用户已有的 Ubuntu GPU vLLM 服务。具体端口、模型名称和指标端点由 `AGENTMEM_LLM_BASE_URL`、`AGENTMEM_MODEL`、`AGENTMEM_VLLM_METRICS_URL` 和 `AGENTMEM_CACHE_STATS_URL` 配置。
 
 如果 8000 主模型服务仍以 `--max-model-len 4096` 启动，tool-heavy 16K workload 的 baseline 超上下文是预期部署限制。要让 tool-heavy baseline 和 optimized 都在该 workload 上正常推理，主 Agent 的 8000 服务需要以 16K 或更高 `max_model_len` 启动。
+
+## Compatibility Scope
+
+- `openEuler_userspace_container_verified=true` means AgentMem ran inside an openEuler userspace container. The container still shares the host kernel.
+- `openEuler_native_host_verified=true` requires a successful run on an openEuler virtual machine or physical host.
+- `Ubuntu_model_server_verified=true` means the remote vLLM model server was checked separately on a Ubuntu GPU host.
+- `full_openEuler_gpu_deployment_verified=true` requires both AgentMem and the GPU model server to run successfully on openEuler. This repository does not mark that true from a Dockerfile alone.
+
+For this project design, running the AgentMem client on a domestic OS while using a remote Ubuntu GPU vLLM server is a valid system adaptation path.

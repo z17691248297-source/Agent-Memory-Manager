@@ -163,4 +163,4 @@ Memory 核心只理解通用 memory_delta 和 artifact_refs。
 
 Report 会说明已配置模型 backend 的结果，包括 Qwen/MiniCPM 等开源模型服务的 latency、TTFT、tokens_per_second、peak_gpu_memory_mb 和 prefix cache metrics。
 
-如果 `nvidia-smi` 或 vLLM `/metrics` 不可用，相关字段写为 `-1`，benchmark 不崩溃。
+如果 `nvidia-smi` 或 vLLM `/metrics` 不可用，相关字段标记为 unavailable，benchmark 不崩溃。

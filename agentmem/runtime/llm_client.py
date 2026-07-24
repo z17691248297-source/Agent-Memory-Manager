@@ -40,6 +40,7 @@ class OpenAICompatibleClient:
         self.backend = str(backend).replace("-", "_").lower()
         self.enable_agent_meta = bool(enable_agent_meta)
         self.agent_meta_builder = agent_meta_builder
+        self._client: Any | None = None
 
     def chat(
         self,
@@ -57,18 +58,8 @@ class OpenAICompatibleClient:
         ttl: int | None = None,
         branch_id: str | None = None,
     ) -> dict[str, Any]:
+        client = self._get_client()
         start = time.perf_counter()
-        try:
-            from openai import OpenAI
-        except ImportError as exc:
-            raise RuntimeError("缺少 openai 包，请安装 requirements.txt") from exc
-
-        client = OpenAI(
-            base_url=self.base_url,
-            api_key=self.api_key,
-            timeout=self.timeout,
-            max_retries=self.max_retries,
-        )
         request_temperature = self.temperature if temperature is None else temperature
         request_max_tokens = self.max_tokens if max_tokens is None else max_tokens
         effective_agent_meta = self._resolve_agent_meta(
@@ -117,18 +108,36 @@ class OpenAICompatibleClient:
         usage = getattr(response, "usage", None)
         prompt_tokens = getattr(usage, "prompt_tokens", None) or estimate_tokens(str(messages))
         completion_tokens = getattr(usage, "completion_tokens", None) or estimate_tokens(content)
+        latency = time.perf_counter() - start
         return {
             "content": content,
-            "latency": time.perf_counter() - start,
-            "ttft": -1,
+            "latency": latency,
+            "ttft": None,
+            "ttft_status": "unavailable",
+            "ttft_reason": "non_streaming_request",
             "model": self.model,
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": prompt_tokens + completion_tokens,
-            "tokens_per_second": _tokens_per_second(completion_tokens, time.perf_counter() - start),
+            "tokens_per_second": _tokens_per_second(completion_tokens, latency),
             "agent_meta_sent": bool(effective_agent_meta),
             "agent_meta": effective_agent_meta or {},
         }
+
+    def _get_client(self) -> Any:
+        if self._client is not None:
+            return self._client
+        try:
+            from openai import OpenAI
+        except ImportError as exc:
+            raise RuntimeError("缺少 openai 包，请安装 requirements.txt") from exc
+        self._client = OpenAI(
+            base_url=self.base_url,
+            api_key=self.api_key,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
+        return self._client
 
     def _chat_streaming(
         self,
@@ -179,7 +188,9 @@ class OpenAICompatibleClient:
         return {
             "content": content,
             "latency": latency,
-            "ttft": (first_token_time - start) if first_token_time is not None else -1,
+            "ttft": (first_token_time - start) if first_token_time is not None else None,
+            "ttft_status": "ok" if first_token_time is not None else "unavailable",
+            "ttft_reason": "" if first_token_time is not None else "no_text_chunk_received",
             "model": self.model,
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
@@ -257,5 +268,5 @@ class OpenAICompatibleClient:
 
 def _tokens_per_second(completion_tokens: int, latency: float) -> float:
     if latency <= 0:
-        return -1
+        return None
     return completion_tokens / latency

@@ -21,7 +21,7 @@ AgentMem optimized 的核心是 Event-Sourced Agent Memory：
 ## 安装
 
 ```bash
-cd /home/zb/vllm
+cd <repo-root>
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -34,9 +34,9 @@ pip install -r requirements.txt
 ```yaml
 llm:
   backend: vllm
-  model: /path/to/Qwen2.5-7B-Instruct
-  base_url: http://<model-host>:8000/v1
-  api_key: EMPTY
+  model: <served-model-name>
+  base_url: http://<model-host>:<model-port>/v1
+  api_key_env: AGENTMEM_API_KEY
   temperature: 0
   max_tokens: 512
   timeout: 120
@@ -46,7 +46,7 @@ agent:
   enable_next_action_loop: true
 
 vllm:
-  metrics_url: http://<model-host>:8000/metrics
+  metrics_url: http://<model-host>:<model-port>/metrics
 ```
 
 `backend=vllm` 使用 OpenAI-compatible Chat Completions API，并通过 streaming 记录 TTFT。
@@ -117,7 +117,7 @@ CSV 会记录：
 - `cached_prompt_tokens`
 - `kv_cache_usage`
 
-如果 `nvidia-smi` 不可用，`peak_gpu_memory_mb` 为 `-1`。如果 `/metrics` 不可用，prefix cache 相关字段为 `-1`。如果 vLLM 连接失败，CLI 会输出清晰错误：`vLLM backend is unavailable. Please check llm.base_url in configs/config.yaml.`
+如果 `nvidia-smi` 不可用，`peak_gpu_memory_mb` 为 unavailable。如果 `/metrics` 不可用，prefix cache 相关字段为 unavailable。如果 vLLM 连接失败，CLI 会输出清晰错误：`vLLM backend is unavailable. Please check llm.base_url in configs/config.yaml.`
 
 ## openEuler / openKylin
 
@@ -129,3 +129,49 @@ CSV 会记录：
 python -m pytest
 bash scripts/run_all.sh
 ```
+
+## Reproducibility
+
+Smoke run with local fake server:
+
+```bash
+bash scripts/reproduce_all.sh --smoke
+```
+
+Release template with a real remote vLLM service:
+
+```bash
+export AGENTMEM_LLM_BACKEND=vllm
+export AGENTMEM_LLM_BASE_URL=http://<model-host>:<model-port>/v1
+export AGENTMEM_MODEL=<served-model-name>
+export AGENTMEM_VLLM_METRICS_URL=http://<model-host>:<model-port>/metrics
+export AGENTMEM_CACHE_STATS_URL=http://<model-host>:<model-port>/v1/agentmem/cache_stats
+bash scripts/reproduce_all.sh --release --config configs/config.release.yaml --output-dir results/release
+```
+
+## Architecture
+
+```mermaid
+flowchart LR
+  A[openEuler AgentMem Client] -->|OpenAI-compatible HTTP| B[Remote vLLM Model Server]
+  A --> C[Event-Sourced Memory]
+  C --> D[Task State View]
+  A --> E[Tool Store]
+  B --> F[/metrics]
+  B --> G[/v1/agentmem/cache_stats]
+  F --> H[Report Validation]
+  G --> H
+```
+
+## Capability Matrix
+
+| Capability | Status |
+| --- | --- |
+| Agent runtime and tool externalization | Implemented |
+| Event-Sourced Memory and Task State View | Implemented |
+| Client-side `agent_meta` transmission | Implemented |
+| vLLM server-side metadata parsing | Server patch required |
+| vLLM priority/TTL eviction enforcement | Experimental/server patch required |
+| Real GPU/KV metrics from model server | Implemented when endpoints are available |
+| openEuler userspace container | Implemented; verify via `environment.json` |
+| openEuler native GPU deployment | Planned; not claimed by Dockerfile |

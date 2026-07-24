@@ -1,0 +1,82 @@
+llm:
+  backend: vllm
+  model: Qwen2.5-7B-Instruct
+  base_url: http://47.108.145.21/v1
+  api_key_env: AGENTMEM_API_KEY
+  temperature: 0
+  max_tokens: 512
+  timeout: 180
+  max_retries: 0
+extractor:
+  enabled: true
+  backend: vllm
+  base_url: http://47.108.145.21/v1
+  api_key_env: AGENTMEM_EXTRACTOR_API_KEY
+  model: Qwen2.5-7B-Instruct
+  temperature: 0
+  max_tokens: 1024
+  timeout: 120
+  max_retries: 0
+  healthcheck_timeout: 3
+  extra_body:
+    agent_meta:
+      agent_id: extractor-qwen25-7b
+      session_id: extractor-release
+      task_type: extraction
+      quality_gate: true
+      require_json: true
+      required_json_keys:
+      - memory_delta
+agent:
+  max_steps: 3
+  enable_next_action_loop: true
+vllm:
+  metrics_url: http://47.108.145.21/metrics
+  cache_stats_url: http://47.108.145.21/v1/agentmem/cache_stats
+  enable_prefix_caching: true
+  enable_agent_meta: true
+  agent_id: agentmem_release
+  default_ttl: 300
+  cache_stats_timeout: 10
+  same_host_gpu: false
+cache_isolation:
+  strategy: snapshot_delta
+  allow_contaminated: false
+memory:
+  recent_rounds: 6
+  enable_tool_externalization: true
+  enable_skill_lazy_loading: true
+  enable_history_summary: true
+  enable_branch_sharing: true
+  enable_stable_prefix: true
+tools:
+  enabled:
+  - log_analyzer
+  - file_reader
+  - calculator
+  - code_analyzer
+  - csv_analyzer
+  - repo_scanner
+  max_selected_tools: 2
+  max_output_chars: 20000
+benchmark:
+  output_dir: results
+  repeat: 5
+  warmup: 1
+  seed: 20260721
+  order: counterbalanced
+  scenarios:
+  - tool-heavy
+  - long-session
+  - multi-stage
+  - branching
+  - prefix-cache
+  - ablation
+  models:
+  - default
+  concurrency_levels:
+  - 1
+  - 4
+  - 8
+  - 16
+  release: true

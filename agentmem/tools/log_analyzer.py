@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from agentmem.tools.path_policy import PROJECT_ROOT, resolve_allowed_path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TOOL_HEAVY_DATASET = PROJECT_ROOT / "benchmarks" / "fixtures" / "tool_heavy_scaled.log"
 
 
@@ -42,10 +42,7 @@ def _dataset_path(input_text: str, context: dict | None) -> Path | None:
     value = context.get("optional_log_path") or context.get("dataset") or _path_from_input(input_text)
     if not value:
         return None
-    path = Path(str(value))
-    if not path.is_absolute():
-        path = PROJECT_ROOT / path
-    return path
+    return resolve_allowed_path(str(value), [PROJECT_ROOT])
 
 
 def _path_from_input(input_text: str) -> str:

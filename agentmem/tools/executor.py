@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import concurrent.futures
+from copy import deepcopy
+import multiprocessing
 import time
 from hashlib import sha256
 from uuid import uuid4
@@ -38,25 +39,18 @@ class ToolExecutor:
 
         cache_key = self._cache_key(tool_name, input_text, context)
         if spec.cacheable and cache_key in self._cache:
-            cached = self._cache[cache_key]
+            cached = deepcopy(self._cache[cache_key])
             cached.metadata["cache_hit"] = True
+            cached.latency = time.perf_counter() - start
             return cached
 
-        try:
-            handler = self.registry.get_handler(tool_name)
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(handler, input_text, context)
-                raw_result = future.result(timeout=spec.timeout_seconds)
-            status = "success"
-            error = None
-        except concurrent.futures.TimeoutError:
-            raw_result = ""
-            status = "timeout"
-            error = f"工具执行超过 {spec.timeout_seconds}s"
-        except Exception as exc:  # noqa: BLE001 - 工具边界需要捕获所有异常
-            raw_result = ""
-            status = "failed"
-            error = str(exc)
+        handler = self.registry.get_handler(tool_name)
+        status, raw_result, error = _execute_in_process(
+            handler,
+            input_text,
+            context,
+            timeout_seconds=float(spec.timeout_seconds),
+        )
 
         display_truncated = bool(raw_result and len(raw_result) > spec.max_output_chars)
 
@@ -106,3 +100,57 @@ class ToolExecutor:
     def _cache_key(self, tool_name: str, input_text: str, context: dict | None) -> str:
         payload = f"{tool_name}\n{input_text}\n{context or {}}"
         return sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _execute_in_process(handler, input_text: str, context: dict | None, timeout_seconds: float) -> tuple[str, str, str | None]:
+    start_methods = multiprocessing.get_all_start_methods()
+    method = "fork" if "fork" in start_methods else start_methods[0]
+    process_context = multiprocessing.get_context(method)
+    receive, send = process_context.Pipe(duplex=False)
+    process = process_context.Process(
+        target=_tool_process_entry,
+        args=(send, handler, input_text, context),
+        daemon=True,
+    )
+    process.start()
+    send.close()
+    deadline = time.monotonic() + max(0.001, timeout_seconds)
+    payload: tuple[str, str] | None = None
+    try:
+        while time.monotonic() < deadline:
+            wait = min(0.02, max(0.0, deadline - time.monotonic()))
+            if receive.poll(wait):
+                payload = receive.recv()
+                break
+            if not process.is_alive():
+                break
+        if payload is None and receive.poll():
+            payload = receive.recv()
+        if payload is None:
+            if process.is_alive():
+                process.terminate()
+            process.join(timeout=0.2)
+            if process.is_alive() and hasattr(process, "kill"):
+                process.kill()
+                process.join(timeout=0.2)
+            return "timeout", "", f"工具执行超过 {timeout_seconds:g}s"
+        status, value = payload
+        process.join(timeout=0.2)
+        if status == "success":
+            return "success", value, None
+        return "failed", "", value
+    finally:
+        receive.close()
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=0.2)
+
+
+def _tool_process_entry(send, handler, input_text: str, context: dict | None) -> None:
+    try:
+        result = handler(input_text, context)
+        send.send(("success", str(result)))
+    except BaseException as exc:  # noqa: BLE001 - child process must report all failures
+        send.send(("failed", str(exc)))
+    finally:
+        send.close()

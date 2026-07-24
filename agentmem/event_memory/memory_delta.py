@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -12,6 +13,18 @@ class Fact:
     confidence: float = 0.75
     importance: float = 0.5
     evidence_ref: str | None = None
+    fact_id: str = ""
+    fact_type: str = "general"
+    source_event_id: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+    access_count: int = 0
+    last_accessed_at: str = ""
+    expires_at: str | None = None
+    protected: bool = False
+    version: int = 1
+    conflict: bool = False
+    supersedes: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -117,11 +130,16 @@ class MemoryDeltaParser:
             data = dict(output)
         else:
             text = str(output or "").strip()
+            stripped = _strip_code_fence(text)
             try:
-                loaded = json.loads(_strip_code_fence(text))
+                loaded = json.loads(stripped)
                 data = dict(loaded) if isinstance(loaded, dict) else {}
             except json.JSONDecodeError:
-                return ParsedModelOutput(assistant_response=text, next_action=None, memory_delta=MemoryDelta())
+                try:
+                    loaded = ast.literal_eval(stripped)
+                    data = dict(loaded) if isinstance(loaded, dict) else {}
+                except (SyntaxError, ValueError, TypeError):
+                    return ParsedModelOutput(assistant_response=text, next_action=None, memory_delta=MemoryDelta())
         assistant_response = _clean_text(data.get("assistant_response") or data.get("response") or data.get("content") or "")
         if not assistant_response and not isinstance(output, dict):
             assistant_response = str(output or "").strip()
@@ -147,6 +165,18 @@ class MemoryDeltaParser:
                 confidence=_bounded_float(item.confidence, 0.0, 1.0, 0.75),
                 importance=_bounded_float(item.importance, 0.0, 1.0, 0.5),
                 evidence_ref=_shorten(item.evidence_ref or "", 180) or None,
+                fact_id=_shorten(item.fact_id, 160),
+                fact_type=_shorten(item.fact_type or "general", 80),
+                source_event_id=_shorten(item.source_event_id, 160),
+                created_at=_shorten(item.created_at, 80),
+                updated_at=_shorten(item.updated_at, 80),
+                access_count=max(0, int(item.access_count or 0)),
+                last_accessed_at=_shorten(item.last_accessed_at, 80),
+                expires_at=_shorten(item.expires_at or "", 80) or None,
+                protected=bool(item.protected),
+                version=max(1, int(item.version or 1)),
+                conflict=bool(item.conflict),
+                supersedes=_shorten(item.supersedes, 160),
             )
             for item in delta.facts
             if _clean_text(item.content)
@@ -186,6 +216,18 @@ def _fact(data: dict[str, Any]) -> Fact:
         confidence=_bounded_float(data.get("confidence"), 0.0, 1.0, 0.75),
         importance=_bounded_float(data.get("importance"), 0.0, 1.0, 0.5),
         evidence_ref=str(data.get("evidence_ref") or "") or None,
+        fact_id=str(data.get("fact_id") or ""),
+        fact_type=str(data.get("fact_type") or data.get("type") or "general"),
+        source_event_id=str(data.get("source_event_id") or ""),
+        created_at=str(data.get("created_at") or ""),
+        updated_at=str(data.get("updated_at") or ""),
+        access_count=int(data.get("access_count") or 0),
+        last_accessed_at=str(data.get("last_accessed_at") or ""),
+        expires_at=str(data.get("expires_at") or "") or None,
+        protected=_bool(data.get("protected", False)),
+        version=int(data.get("version") or 1),
+        conflict=_bool(data.get("conflict", False)),
+        supersedes=str(data.get("supersedes") or ""),
     )
 
 
@@ -207,6 +249,12 @@ def _artifact_ref(data: dict[str, Any]) -> ArtifactRef:
         summary=str(data.get("summary", "")),
         token_count=int(data.get("token_count") or 0),
     )
+
+
+def _bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _string_list(value: Any) -> list[str]:

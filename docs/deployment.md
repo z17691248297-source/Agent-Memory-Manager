@@ -3,7 +3,7 @@
 ## 安装依赖
 
 ```bash
-cd /home/zb/vllm
+cd <repo-root>
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -16,9 +16,9 @@ pip install -r requirements.txt
 ```yaml
 llm:
   backend: vllm
-  model: /home/vip/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28
-  base_url: http://47.108.145.21/v1
-  api_key: EMPTY
+  model: ${AGENTMEM_MODEL}
+  base_url: ${AGENTMEM_LLM_BASE_URL}
+  api_key_env: AGENTMEM_API_KEY
   temperature: 0
   max_tokens: 512
   timeout: 120
@@ -63,3 +63,22 @@ CLI 会输出清晰错误：`vLLM backend is unavailable. Please check llm.base_
 ### 如何观测 Agent-aware KV Cache 管理？
 
 AgentMem 通过 OpenAI-compatible `extra_body.agent_meta` 传递 session、context、segment、priority 和 ttl，并通过 `/v1/agentmem/cache_stats` 采集服务端 KV cache 统计。
+
+## Reproducible Release Run
+
+Use `scripts/reproduce_all.sh` for smoke or release experiments. Smoke mode starts a local fake OpenAI-compatible server and must not be used for release claims:
+
+```bash
+bash scripts/reproduce_all.sh --smoke
+```
+
+For a real vLLM server:
+
+```bash
+export AGENTMEM_LLM_BACKEND=vllm
+export AGENTMEM_LLM_BASE_URL=http://<model-host>:8000/v1
+export AGENTMEM_MODEL=<served-model-name>
+export AGENTMEM_VLLM_METRICS_URL=http://<model-host>:8000/metrics
+export AGENTMEM_CACHE_STATS_URL=http://<model-host>:8000/v1/agentmem/cache_stats
+bash scripts/reproduce_all.sh --release --config configs/config.release.yaml --output-dir results/release
+```

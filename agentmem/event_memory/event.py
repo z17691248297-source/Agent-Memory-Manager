@@ -23,6 +23,7 @@ EVENT_TYPES = {
     "branch_rollback",
     "memory_snapshot",
     "memory_delta",
+    "assistant_response",
     "final_answer",
     "evaluation_result",
 }

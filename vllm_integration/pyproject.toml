@@ -1,0 +1,9 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentmem-vllm-integration"
+version = "0.0.0"
+description = "AgentMem vLLM integration skeleton; server patch required"
+requires-python = ">=3.10"

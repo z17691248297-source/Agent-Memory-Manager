@@ -1,0 +1,30 @@
+services:
+  agentmem-client:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent-openeuler
+      args:
+        OPENEULER_IMAGE: ${OPENEULER_IMAGE:-openeuler/openeuler:24.03-lts}
+    environment:
+      AGENTMEM_LLM_BACKEND: ${AGENTMEM_LLM_BACKEND:-vllm}
+      AGENTMEM_LLM_BASE_URL: ${AGENTMEM_LLM_BASE_URL:-}
+      AGENTMEM_MODEL: ${AGENTMEM_MODEL:-}
+      AGENTMEM_API_KEY: ${AGENTMEM_API_KEY:-}
+      AGENTMEM_VLLM_METRICS_URL: ${AGENTMEM_VLLM_METRICS_URL:-}
+      AGENTMEM_CACHE_STATS_URL: ${AGENTMEM_CACHE_STATS_URL:-}
+    volumes:
+      - ../results:/workspace/agentmem/results
+    command: ["bash", "scripts/reproduce_all.sh", "--smoke", "--skip-model-check"]
+
+  mock-vllm:
+    profiles: ["mock-vllm"]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent-generic
+    command: ["python", "tests/utils/fake_openai_server.py", "--host", "0.0.0.0", "--port", "18080"]
+    ports:
+      - "18080:18080"
+
+# Real remote vLLM is not started by default. Set AGENTMEM_LLM_BASE_URL,
+# AGENTMEM_MODEL, AGENTMEM_VLLM_METRICS_URL and AGENTMEM_CACHE_STATS_URL to use
+# an existing Ubuntu GPU model server.

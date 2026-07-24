@@ -1,0 +1,3769 @@
+{
+  "available": true,
+  "unavailable_reason": "",
+  "metrics_url": "http://47.108.145.21/v1/agentmem/cache_stats",
+  "scope": "global",
+  "raw": {
+    "engines": {
+      "qwen-small-gpu0": {
+        "generated_at": 1784891506.9403765,
+        "num_agent_blocks": 6516,
+        "sessions": {
+          "perf-baseline_round_robin-0": {
+            "cached_blocks": 6,
+            "accessed_blocks": 896,
+            "evicted_blocks": 6
+          },
+          "perf-baseline_round_robin-2": {
+            "cached_blocks": 13,
+            "accessed_blocks": 149,
+            "evicted_blocks": 13
+          },
+          "perf-baseline_round_robin-4": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-6": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-8": {
+            "cached_blocks": 17,
+            "evicted_blocks": 17
+          },
+          "perf-baseline_round_robin-10": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-12": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-14": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-16": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-18": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-20": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-22": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-24": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-26": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-28": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-30": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-32": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-34": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-36": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-38": {
+            "cached_blocks": 13,
+            "evicted_blocks": 13
+          },
+          "perf-baseline_round_robin-40": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-42": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-44": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-46": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-48": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-50": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-52": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-54": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-56": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-58": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-60": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-62": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-64": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-baseline_round_robin-66": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-68": {
+            "cached_blocks": 13,
+            "evicted_blocks": 13
+          },
+          "perf-baseline_round_robin-70": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-72": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-74": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-76": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-78": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-80": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-82": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-84": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-baseline_round_robin-86": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-88": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-baseline_round_robin-90": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-92": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-94": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-96": {
+            "cached_blocks": 13,
+            "evicted_blocks": 13
+          },
+          "perf-baseline_round_robin-98": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-100": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-102": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-baseline_round_robin-104": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-106": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-108": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-110": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-112": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-114": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-116": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-118": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-120": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-122": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-124": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-126": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-128": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-130": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-132": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-134": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-136": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-138": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-140": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-baseline_round_robin-142": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-144": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-146": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-148": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-150": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-152": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-154": {
+            "cached_blocks": 13,
+            "evicted_blocks": 13
+          },
+          "perf-baseline_round_robin-156": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-158": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-160": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-baseline_round_robin-162": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-164": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-baseline_round_robin-166": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-168": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-baseline_round_robin-170": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-baseline_round_robin-172": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-174": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-176": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-178": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-180": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-baseline_round_robin-182": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-184": {
+            "cached_blocks": 17,
+            "evicted_blocks": 17
+          },
+          "perf-baseline_round_robin-186": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-188": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-190": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-baseline_round_robin-192": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-194": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-196": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_round_robin-198": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "perf-agentmem-0": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-1": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-4": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-5": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-8": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-9": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-12": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-13": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-16": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-17": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-20": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-21": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-24": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-25": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-28": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-29": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-32": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-33": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-36": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-37": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-40": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-41": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-44": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-45": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-48": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-49": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-52": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-agentmem-53": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-56": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-agentmem-57": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-60": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-61": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-64": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-65": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-68": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-agentmem-69": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-72": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-73": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-76": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-77": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-80": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-agentmem-81": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-84": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-85": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-88": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-agentmem-89": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-92": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-93": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-96": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-97": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-100": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-101": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-104": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-105": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-108": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-109": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-112": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-agentmem-113": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-116": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-117": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-120": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-121": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-124": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-125": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-128": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-129": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-132": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-133": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-136": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-137": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-140": {
+            "cached_blocks": 13,
+            "evicted_blocks": 13
+          },
+          "perf-agentmem-141": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-144": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-agentmem-145": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-148": {
+            "cached_blocks": 17,
+            "evicted_blocks": 17
+          },
+          "perf-agentmem-149": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-152": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-153": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-156": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-157": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-160": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-161": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-164": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-165": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-168": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-169": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-172": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-173": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-176": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-agentmem-177": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-180": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-181": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-184": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-185": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-188": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-189": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-192": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-agentmem-193": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-agentmem-196": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-agentmem-197": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-1": {
+            "cached_blocks": 6,
+            "evicted_blocks": 6
+          },
+          "event_run_1784866371595_860de71c": {
+            "cached_blocks": 74,
+            "accessed_blocks": 2926,
+            "evicted_blocks": 74
+          },
+          "event_run_1784866373156_17ccdd10": {
+            "cached_blocks": 35,
+            "evicted_blocks": 35
+          },
+          "event_run_1784866374938_816fb199": {
+            "cached_blocks": 36,
+            "evicted_blocks": 36
+          },
+          "event_run_1784866376732_e83ab3fa": {
+            "cached_blocks": 35,
+            "evicted_blocks": 35
+          },
+          "event_run_1784866378513_b3273de5": {
+            "cached_blocks": 36,
+            "evicted_blocks": 36
+          },
+          "run_1784866381093_6d4116d8": {
+            "cached_blocks": 315,
+            "accessed_blocks": 32187,
+            "evicted_blocks": 315
+          },
+          "run_1784866399256_1b127235": {
+            "cached_blocks": 82,
+            "evicted_blocks": 82
+          },
+          "run_1784866417046_3fa9fa45": {
+            "cached_blocks": 82,
+            "evicted_blocks": 82
+          },
+          "run_1784866435006_62cf4694": {
+            "cached_blocks": 82,
+            "evicted_blocks": 82
+          },
+          "run_1784866453049_a95e3193": {
+            "cached_blocks": 82,
+            "evicted_blocks": 82
+          },
+          "run_1784866471515_942250ea": {
+            "cached_blocks": 4198,
+            "accessed_blocks": 7189,
+            "evicted_blocks": 4198
+          },
+          "run_1784866504955_6e6f6075": {
+            "cached_blocks": 4457,
+            "accessed_blocks": 1605,
+            "evicted_blocks": 4457
+          },
+          "run_1784866557677_9df6fb4d": {
+            "cached_blocks": 4299,
+            "accessed_blocks": 14,
+            "evicted_blocks": 4299
+          },
+          "run_1784866610503_cae16e28": {
+            "cached_blocks": 4235,
+            "accessed_blocks": 14,
+            "evicted_blocks": 4235
+          },
+          "run_1784866663462_e181d69c": {
+            "cached_blocks": 4752,
+            "accessed_blocks": 14,
+            "evicted_blocks": 4752
+          },
+          "event_run_1784866729433_6ab8f306": {
+            "cached_blocks": 3610,
+            "accessed_blocks": 6911,
+            "evicted_blocks": 3610
+          },
+          "event_run_1784866758679_511de641": {
+            "cached_blocks": 3369,
+            "accessed_blocks": 29,
+            "evicted_blocks": 3369
+          },
+          "event_run_1784866789252_296745e6": {
+            "cached_blocks": 3350,
+            "accessed_blocks": 12,
+            "evicted_blocks": 3350
+          },
+          "event_run_1784866819114_f71000f6": {
+            "cached_blocks": 3369,
+            "accessed_blocks": 4,
+            "evicted_blocks": 3369
+          },
+          "event_run_1784866848663_68a53eb5": {
+            "cached_blocks": 3360,
+            "evicted_blocks": 3360
+          },
+          "run_1784866881798_ffd5bf79": {
+            "cached_blocks": 45,
+            "accessed_blocks": 10216,
+            "evicted_blocks": 45
+          },
+          "run_1784866883429_c0ebcacd": {
+            "cached_blocks": 2,
+            "evicted_blocks": 2
+          },
+          "run_1784866884314_8f6ee01c": {
+            "cached_blocks": 2,
+            "evicted_blocks": 2
+          },
+          "run_1784866885180_8cc45218": {
+            "cached_blocks": 2,
+            "evicted_blocks": 2
+          },
+          "run_1784866885998_37791817": {
+            "cached_blocks": 2,
+            "evicted_blocks": 2
+          },
+          "run_1784866887075_ce7423be": {
+            "cached_blocks": 294,
+            "accessed_blocks": 3148,
+            "evicted_blocks": 294
+          },
+          "run_1784866893267_c5e795ee": {
+            "cached_blocks": 249,
+            "accessed_blocks": 93,
+            "evicted_blocks": 249
+          },
+          "run_1784866899193_f23d890e": {
+            "cached_blocks": 218,
+            "accessed_blocks": 42,
+            "evicted_blocks": 218
+          },
+          "run_1784866903833_78da64a4": {
+            "cached_blocks": 227,
+            "accessed_blocks": 43,
+            "evicted_blocks": 227
+          },
+          "run_1784866909177_847c36ab": {
+            "cached_blocks": 244,
+            "accessed_blocks": 44,
+            "evicted_blocks": 244
+          },
+          "event_run_1784866916061_2531ab46": {
+            "cached_blocks": 171,
+            "accessed_blocks": 313,
+            "evicted_blocks": 171
+          },
+          "event_run_1784866922973_8147a683": {
+            "cached_blocks": 126,
+            "evicted_blocks": 126
+          },
+          "event_run_1784866929610_95c48182": {
+            "cached_blocks": 149,
+            "evicted_blocks": 149
+          },
+          "event_run_1784866937784_3a2faf27": {
+            "cached_blocks": 128,
+            "evicted_blocks": 128
+          },
+          "event_run_1784866944481_d356e8d6": {
+            "cached_blocks": 138,
+            "evicted_blocks": 138
+          },
+          "branching_baseline": {
+            "cached_blocks": 1866,
+            "accessed_blocks": 10820,
+            "evicted_blocks": 1250
+          },
+          "branching_optimized": {
+            "cached_blocks": 930,
+            "evicted_blocks": 930
+          },
+          "prefix_cache_baseline": {
+            "cached_blocks": 1636,
+            "evicted_blocks": 1636
+          },
+          "prefix_cache_optimized": {
+            "cached_blocks": 452,
+            "accessed_blocks": 812,
+            "evicted_blocks": 452
+          },
+          "agentmem_ablation_session": {
+            "cached_blocks": 229,
+            "evicted_blocks": 229
+          },
+          "concurrent_agents_c1_a1": {
+            "cached_blocks": 91,
+            "accessed_blocks": 10,
+            "evicted_blocks": 60
+          },
+          "concurrent_agents_c4_a3": {
+            "cached_blocks": 61,
+            "accessed_blocks": 4,
+            "evicted_blocks": 34
+          },
+          "concurrent_agents_c4_a4": {
+            "cached_blocks": 62,
+            "accessed_blocks": 4,
+            "evicted_blocks": 28
+          },
+          "concurrent_agents_c4_a2": {
+            "cached_blocks": 68,
+            "accessed_blocks": 4,
+            "evicted_blocks": 34
+          },
+          "concurrent_agents_c4_a1": {
+            "cached_blocks": 60,
+            "evicted_blocks": 29
+          },
+          "concurrent_agents_c8_a5": {
+            "cached_blocks": 48,
+            "evicted_blocks": 19
+          },
+          "concurrent_agents_c8_a2": {
+            "cached_blocks": 40,
+            "evicted_blocks": 20
+          },
+          "concurrent_agents_c8_a1": {
+            "cached_blocks": 44,
+            "evicted_blocks": 21
+          },
+          "concurrent_agents_c8_a3": {
+            "cached_blocks": 64,
+            "evicted_blocks": 32
+          },
+          "concurrent_agents_c8_a4": {
+            "cached_blocks": 62,
+            "evicted_blocks": 30
+          },
+          "concurrent_agents_c8_a7": {
+            "cached_blocks": 49,
+            "evicted_blocks": 28
+          },
+          "concurrent_agents_c8_a6": {
+            "cached_blocks": 53,
+            "evicted_blocks": 19
+          },
+          "concurrent_agents_c8_a8": {
+            "cached_blocks": 63,
+            "evicted_blocks": 31
+          },
+          "codex-smoke-20260724-002": {
+            "cached_blocks": 3,
+            "accessed_blocks": 1,
+            "evicted_blocks": 3
+          },
+          "codex-smoke-20260724-004": {
+            "cached_blocks": 1,
+            "evicted_blocks": 1
+          },
+          "event_run_1784883073775_881ce242": {
+            "cached_blocks": 32,
+            "accessed_blocks": 1,
+            "evicted_blocks": 32
+          },
+          "event_run_1784883127767_05119567": {
+            "cached_blocks": 31,
+            "evicted_blocks": 31
+          },
+          "run_1784883133087_4ba57dae": {
+            "cached_blocks": 414,
+            "evicted_blocks": 414
+          },
+          "ttl_priority_session": {
+            "cached_blocks": 2109,
+            "accessed_blocks": 6,
+            "evicted_blocks": 2109
+          },
+          "event_run_1784885569669_42d8c6b0": {
+            "cached_blocks": 46,
+            "accessed_blocks": 52,
+            "evicted_blocks": 46
+          },
+          "event_run_1784885604169_a99c0d11": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "event_run_1784885638246_a5f7c42b": {
+            "cached_blocks": 31,
+            "evicted_blocks": 31
+          },
+          "event_run_1784885672368_493b3228": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "event_run_1784885706872_5696719f": {
+            "cached_blocks": 32,
+            "evicted_blocks": 32
+          },
+          "run_1784885741892_396bd1c1": {
+            "cached_blocks": 275,
+            "accessed_blocks": 17669,
+            "evicted_blocks": 275
+          },
+          "run_1784885768379_f250c5f8": {
+            "cached_blocks": 179,
+            "accessed_blocks": 4479,
+            "evicted_blocks": 179
+          },
+          "run_1784885795066_7c23c4e2": {
+            "cached_blocks": 82,
+            "evicted_blocks": 82
+          },
+          "run_1784885819577_a86c3c54": {
+            "cached_blocks": 82,
+            "evicted_blocks": 82
+          },
+          "run_1784885843212_f32f1f59": {
+            "cached_blocks": 82,
+            "evicted_blocks": 82
+          },
+          "run_1784885867185_ccf62ba8": {
+            "cached_blocks": 5242,
+            "accessed_blocks": 1848,
+            "evicted_blocks": 5242
+          },
+          "run_1784885932893_5e470038": {
+            "cached_blocks": 7063,
+            "accessed_blocks": 103,
+            "evicted_blocks": 7063
+          },
+          "run_1784886046117_c4f910ce": {
+            "cached_blocks": 4691,
+            "accessed_blocks": 732,
+            "evicted_blocks": 4691
+          },
+          "run_1784886103439_4f796a01": {
+            "cached_blocks": 224,
+            "evicted_blocks": 224
+          },
+          "event_run_1784886250391_916bd2bd": {
+            "cached_blocks": 73,
+            "accessed_blocks": 767,
+            "evicted_blocks": 73
+          },
+          "event_run_1784886284968_0de2f6f4": {
+            "cached_blocks": 33,
+            "evicted_blocks": 33
+          },
+          "event_run_1784886319365_ab78cd2e": {
+            "cached_blocks": 33,
+            "evicted_blocks": 33
+          },
+          "event_run_1784886354160_bd1ef535": {
+            "cached_blocks": 33,
+            "evicted_blocks": 33
+          },
+          "event_run_1784886388518_1b01b806": {
+            "cached_blocks": 33,
+            "evicted_blocks": 33
+          },
+          "run_1784886424188_3b2e0681": {
+            "cached_blocks": 45,
+            "accessed_blocks": 172,
+            "evicted_blocks": 45
+          },
+          "run_1784886425879_0ce35ed9": {
+            "cached_blocks": 2,
+            "evicted_blocks": 2
+          },
+          "run_1784886426780_ed39638b": {
+            "cached_blocks": 2,
+            "evicted_blocks": 2
+          },
+          "run_1784886427604_9ac5c373": {
+            "cached_blocks": 2,
+            "evicted_blocks": 2
+          },
+          "run_1784886428433_e9f651e3": {
+            "cached_blocks": 2,
+            "evicted_blocks": 2
+          },
+          "run_1784886429551_05221e82": {
+            "cached_blocks": 293,
+            "accessed_blocks": 208,
+            "evicted_blocks": 293
+          },
+          "run_1784886437602_51574707": {
+            "cached_blocks": 260,
+            "accessed_blocks": 95,
+            "evicted_blocks": 260
+          },
+          "run_1784886444361_561d22bb": {
+            "cached_blocks": 254,
+            "accessed_blocks": 48,
+            "evicted_blocks": 254
+          },
+          "run_1784886451215_e8d63a58": {
+            "cached_blocks": 250,
+            "accessed_blocks": 49,
+            "evicted_blocks": 250
+          },
+          "run_1784886458423_2bb9e496": {
+            "cached_blocks": 246,
+            "accessed_blocks": 49,
+            "evicted_blocks": 246
+          },
+          "event_run_1784886465152_58841746": {
+            "cached_blocks": 162,
+            "accessed_blocks": 46,
+            "evicted_blocks": 162
+          },
+          "event_run_1784886522268_caea4b17": {
+            "cached_blocks": 169,
+            "accessed_blocks": 75,
+            "evicted_blocks": 169
+          },
+          "event_run_1784886592115_d42e63dd": {
+            "cached_blocks": 163,
+            "evicted_blocks": 163
+          },
+          "event_run_1784886660676_e1b1e72e": {
+            "cached_blocks": 123,
+            "evicted_blocks": 123
+          },
+          "event_run_1784886731966_ea4a999f": {
+            "cached_blocks": 129,
+            "evicted_blocks": 129
+          },
+          "cache_pressure_session_1": {
+            "cached_blocks": 1754,
+            "accessed_blocks": 19,
+            "evicted_blocks": 1406
+          },
+          "cache_pressure_session_2": {
+            "cached_blocks": 1757,
+            "evicted_blocks": 1067
+          },
+          "cache_pressure_session_3": {
+            "cached_blocks": 1761,
+            "evicted_blocks": 1061
+          },
+          "cache_pressure_session_4": {
+            "cached_blocks": 1753,
+            "evicted_blocks": 1051
+          },
+          "event_run_1784890940124_e423e31c": {
+            "cached_blocks": 101,
+            "accessed_blocks": 1094
+          },
+          "event_run_1784890966262_0bba7d97": {
+            "cached_blocks": 44
+          },
+          "event_run_1784890990129_c70c7e37": {
+            "cached_blocks": 45
+          },
+          "event_run_1784891014624_1fdc01e3": {
+            "cached_blocks": 46
+          },
+          "event_run_1784891040025_e2367856": {
+            "cached_blocks": 50
+          },
+          "run_1784891070107_7ca38dc4": {
+            "cached_blocks": 45,
+            "accessed_blocks": 172
+          },
+          "run_1784891071834_85302fee": {
+            "cached_blocks": 2
+          },
+          "run_1784891072839_e41a9d29": {
+            "cached_blocks": 2
+          },
+          "run_1784891073962_1c25d739": {
+            "cached_blocks": 2
+          },
+          "run_1784891074984_5c3330f5": {
+            "cached_blocks": 2
+          },
+          "run_1784891077107_d350b318": {
+            "cached_blocks": 351,
+            "accessed_blocks": 481
+          },
+          "run_1784891086873_b19b6143": {
+            "cached_blocks": 327,
+            "accessed_blocks": 156
+          },
+          "run_1784891097654_1478dadf": {
+            "cached_blocks": 287,
+            "accessed_blocks": 58
+          },
+          "run_1784891107504_7c4dc1db": {
+            "cached_blocks": 313,
+            "accessed_blocks": 54
+          },
+          "run_1784891118541_12cab5d4": {
+            "cached_blocks": 291,
+            "accessed_blocks": 58
+          },
+          "event_run_1784891129808_6fa43b08": {
+            "cached_blocks": 255,
+            "accessed_blocks": 46
+          },
+          "event_run_1784891201792_f3fe81ee": {
+            "cached_blocks": 262,
+            "accessed_blocks": 112
+          },
+          "event_run_1784891264312_f83272e7": {
+            "cached_blocks": 247
+          },
+          "event_run_1784891317904_fa5b5a39": {
+            "cached_blocks": 227
+          },
+          "event_run_1784891376938_58a278c1": {
+            "cached_blocks": 181
+          }
+        },
+        "segments": {
+          "user_message": {
+            "cached_blocks": 2500,
+            "accessed_blocks": 1045,
+            "evicted_blocks": 2500
+          },
+          "tool_schema": {
+            "cached_blocks": 4425,
+            "accessed_blocks": 5843,
+            "evicted_blocks": 4295
+          },
+          "tool_result": {
+            "cached_blocks": 15585,
+            "accessed_blocks": 14223,
+            "evicted_blocks": 14643
+          },
+          "scratchpad": {
+            "cached_blocks": 48639,
+            "accessed_blocks": 73331,
+            "evicted_blocks": 46037
+          },
+          "assistant_message": {
+            "cached_blocks": 3467,
+            "accessed_blocks": 55,
+            "evicted_blocks": 2636
+          },
+          "shared_prefix": {
+            "cached_blocks": 6798,
+            "accessed_blocks": 11655,
+            "evicted_blocks": 6181
+          },
+          "__unknown__": {
+            "cached_blocks": 4,
+            "accessed_blocks": 1,
+            "evicted_blocks": 4
+          },
+          "expired_branch": {
+            "cached_blocks": 1906,
+            "evicted_blocks": 512
+          }
+        },
+        "eviction_reasons": {
+          "ttl_expired": 23307,
+          "cache_pressure": 6877,
+          "tool_result": 9594,
+          "scratchpad": 37029
+        },
+        "active_blocks_by_session": {
+          "cache_pressure_session_1": 348,
+          "cache_pressure_session_2": 690,
+          "cache_pressure_session_3": 700,
+          "cache_pressure_session_4": 702,
+          "concurrent_agents_c1_a1": 31,
+          "concurrent_agents_c4_a4": 34,
+          "concurrent_agents_c4_a3": 27,
+          "concurrent_agents_c4_a2": 34,
+          "concurrent_agents_c4_a1": 31,
+          "concurrent_agents_c8_a5": 29,
+          "concurrent_agents_c8_a8": 32,
+          "concurrent_agents_c8_a1": 23,
+          "concurrent_agents_c8_a2": 20,
+          "concurrent_agents_c8_a4": 32,
+          "concurrent_agents_c8_a7": 21,
+          "concurrent_agents_c8_a6": 34,
+          "concurrent_agents_c8_a3": 32,
+          "event_run_1784890940124_e423e31c": 101,
+          "event_run_1784890966262_0bba7d97": 44,
+          "event_run_1784890990129_c70c7e37": 45,
+          "event_run_1784891014624_1fdc01e3": 46,
+          "event_run_1784891040025_e2367856": 50,
+          "run_1784891070107_7ca38dc4": 45,
+          "run_1784891071834_85302fee": 2,
+          "run_1784891072839_e41a9d29": 2,
+          "run_1784891073962_1c25d739": 2,
+          "run_1784891074984_5c3330f5": 2,
+          "run_1784891077107_d350b318": 351,
+          "run_1784891086873_b19b6143": 327,
+          "run_1784891097654_1478dadf": 287,
+          "run_1784891107504_7c4dc1db": 313,
+          "run_1784891118541_12cab5d4": 291,
+          "event_run_1784891129808_6fa43b08": 255,
+          "event_run_1784891201792_f3fe81ee": 262,
+          "event_run_1784891264312_f83272e7": 247,
+          "event_run_1784891317904_fa5b5a39": 227,
+          "event_run_1784891376938_58a278c1": 181,
+          "branching_baseline": 616
+        },
+        "active_blocks_by_segment": {
+          "shared_prefix": 617,
+          "scratchpad": 2602,
+          "expired_branch": 1394,
+          "tool_schema": 130,
+          "tool_result": 942,
+          "assistant_message": 831
+        },
+        "stats_path": "/tmp/agentmem-small.json"
+      },
+      "qwen-large-gpu5": {
+        "generated_at": 1784891446.1381986,
+        "num_agent_blocks": 1659,
+        "sessions": {
+          "public-large": {
+            "cached_blocks": 4,
+            "accessed_blocks": 1,
+            "evicted_blocks": 4
+          },
+          "perf-baseline_fixed_large-0": {
+            "cached_blocks": 30,
+            "accessed_blocks": 1501,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-1": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-2": {
+            "cached_blocks": 51,
+            "accessed_blocks": 333,
+            "evicted_blocks": 51
+          },
+          "perf-baseline_fixed_large-3": {
+            "cached_blocks": 51,
+            "accessed_blocks": 500,
+            "evicted_blocks": 51
+          },
+          "perf-baseline_fixed_large-4": {
+            "cached_blocks": 25,
+            "evicted_blocks": 25
+          },
+          "perf-baseline_fixed_large-5": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-6": {
+            "cached_blocks": 50,
+            "evicted_blocks": 50
+          },
+          "perf-baseline_fixed_large-7": {
+            "cached_blocks": 50,
+            "evicted_blocks": 50
+          },
+          "perf-baseline_round_robin-1": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-3": {
+            "cached_blocks": 50,
+            "evicted_blocks": 50
+          },
+          "perf-baseline_round_robin-5": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_round_robin-7": {
+            "cached_blocks": 50,
+            "evicted_blocks": 50
+          },
+          "perf-agentmem-2": {
+            "cached_blocks": 50,
+            "evicted_blocks": 50
+          },
+          "perf-agentmem-3": {
+            "cached_blocks": 50,
+            "evicted_blocks": 50
+          },
+          "perf-agentmem-6": {
+            "cached_blocks": 50,
+            "evicted_blocks": 50
+          },
+          "perf-agentmem-7": {
+            "cached_blocks": 50,
+            "evicted_blocks": 50
+          },
+          "perf-baseline_fixed_large-8": {
+            "cached_blocks": 20,
+            "evicted_blocks": 20
+          },
+          "perf-baseline_fixed_large-9": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_fixed_large-10": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-11": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-12": {
+            "cached_blocks": 22,
+            "evicted_blocks": 22
+          },
+          "perf-baseline_fixed_large-13": {
+            "cached_blocks": 13,
+            "evicted_blocks": 13
+          },
+          "perf-baseline_fixed_large-14": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-15": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-16": {
+            "cached_blocks": 20,
+            "evicted_blocks": 20
+          },
+          "perf-baseline_fixed_large-17": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_fixed_large-18": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-19": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-20": {
+            "cached_blocks": 20,
+            "evicted_blocks": 20
+          },
+          "perf-baseline_fixed_large-21": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_fixed_large-22": {
+            "cached_blocks": 39,
+            "evicted_blocks": 39
+          },
+          "perf-baseline_fixed_large-23": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-24": {
+            "cached_blocks": 21,
+            "evicted_blocks": 21
+          },
+          "perf-baseline_fixed_large-25": {
+            "cached_blocks": 13,
+            "evicted_blocks": 13
+          },
+          "perf-baseline_fixed_large-26": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-27": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-28": {
+            "cached_blocks": 21,
+            "evicted_blocks": 21
+          },
+          "perf-baseline_fixed_large-29": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_fixed_large-30": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-31": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-32": {
+            "cached_blocks": 19,
+            "evicted_blocks": 19
+          },
+          "perf-baseline_fixed_large-33": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_fixed_large-34": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-35": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-36": {
+            "cached_blocks": 21,
+            "evicted_blocks": 21
+          },
+          "perf-baseline_fixed_large-37": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_fixed_large-38": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-39": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-40": {
+            "cached_blocks": 21,
+            "evicted_blocks": 21
+          },
+          "perf-baseline_fixed_large-41": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_fixed_large-42": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-43": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-44": {
+            "cached_blocks": 21,
+            "evicted_blocks": 21
+          },
+          "perf-baseline_fixed_large-45": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_fixed_large-46": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-47": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-48": {
+            "cached_blocks": 20,
+            "evicted_blocks": 20
+          },
+          "perf-baseline_fixed_large-49": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_fixed_large-50": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-51": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-52": {
+            "cached_blocks": 22,
+            "evicted_blocks": 22
+          },
+          "perf-baseline_fixed_large-53": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_fixed_large-54": {
+            "cached_blocks": 38,
+            "evicted_blocks": 38
+          },
+          "perf-baseline_fixed_large-55": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_fixed_large-56": {
+            "cached_blocks": 22,
+            "evicted_blocks": 22
+          },
+          "perf-baseline_fixed_large-57": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_fixed_large-58": {
+            "cached_blocks": 39,
+            "evicted_blocks": 39
+          },
+          "perf-baseline_fixed_large-59": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-9": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-11": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-13": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-15": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-17": {
+            "cached_blocks": 13,
+            "evicted_blocks": 13
+          },
+          "perf-baseline_round_robin-19": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-21": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-23": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-25": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-27": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-29": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-31": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-33": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-35": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-37": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-39": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-41": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-43": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-45": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-47": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-49": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-51": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-53": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-55": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-baseline_round_robin-57": {
+            "cached_blocks": 12,
+            "evicted_blocks": 12
+          },
+          "perf-baseline_round_robin-59": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-10": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-11": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-14": {
+            "cached_blocks": 39,
+            "evicted_blocks": 39
+          },
+          "perf-agentmem-15": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-18": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-19": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-22": {
+            "cached_blocks": 39,
+            "evicted_blocks": 39
+          },
+          "perf-agentmem-23": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-26": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-27": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-30": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-31": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-34": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-35": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-38": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-39": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-42": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-43": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-46": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-47": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-50": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-51": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-54": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-55": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "perf-agentmem-58": {
+            "cached_blocks": 38,
+            "evicted_blocks": 38
+          },
+          "perf-agentmem-59": {
+            "cached_blocks": 40,
+            "evicted_blocks": 40
+          },
+          "quality-fallback": {
+            "cached_blocks": 2,
+            "evicted_blocks": 2
+          },
+          "bench-session-0": {
+            "cached_blocks": 50,
+            "accessed_blocks": 141,
+            "evicted_blocks": 50
+          },
+          "bench-session-1": {
+            "cached_blocks": 46,
+            "evicted_blocks": 46
+          },
+          "bench-session-2": {
+            "cached_blocks": 46,
+            "evicted_blocks": 46
+          },
+          "bench-session-3": {
+            "cached_blocks": 46,
+            "evicted_blocks": 46
+          },
+          "bench-session-4": {
+            "cached_blocks": 46,
+            "evicted_blocks": 46
+          },
+          "bench-session-5": {
+            "cached_blocks": 46,
+            "evicted_blocks": 46
+          },
+          "bench-session-6": {
+            "cached_blocks": 46,
+            "evicted_blocks": 46
+          },
+          "bench-session-7": {
+            "cached_blocks": 46,
+            "evicted_blocks": 46
+          },
+          "bench-session-8": {
+            "cached_blocks": 46,
+            "evicted_blocks": 46
+          },
+          "bench-session-9": {
+            "cached_blocks": 46,
+            "evicted_blocks": 46
+          },
+          "perf-baseline_fixed_large-60": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-61": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-62": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-63": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-64": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-65": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-66": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-baseline_fixed_large-67": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-68": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-69": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_fixed_large-70": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-71": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-72": {
+            "cached_blocks": 17,
+            "evicted_blocks": 17
+          },
+          "perf-baseline_fixed_large-73": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-74": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-75": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-76": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-77": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-78": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-baseline_fixed_large-79": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-80": {
+            "cached_blocks": 17,
+            "evicted_blocks": 17
+          },
+          "perf-baseline_fixed_large-81": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-82": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-baseline_fixed_large-83": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-84": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-85": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-86": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-87": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-88": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-89": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-90": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-91": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-92": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-93": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-94": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-baseline_fixed_large-95": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-96": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-97": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-98": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-99": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-100": {
+            "cached_blocks": 17,
+            "evicted_blocks": 17
+          },
+          "perf-baseline_fixed_large-101": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-102": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-103": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-104": {
+            "cached_blocks": 17,
+            "evicted_blocks": 17
+          },
+          "perf-baseline_fixed_large-105": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-106": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-107": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-108": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-109": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-110": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-111": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-112": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-113": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-114": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-115": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-116": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-117": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_fixed_large-118": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-119": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-120": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-121": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-122": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-123": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-124": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-125": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-126": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-127": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-128": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-129": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-130": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-131": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-132": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-133": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-134": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-135": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-136": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "perf-baseline_fixed_large-137": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-138": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-139": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-140": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-141": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-142": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-143": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-144": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-145": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-146": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-baseline_fixed_large-147": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-148": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-149": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-150": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-151": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-152": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-153": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-154": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-155": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-156": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-157": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-158": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-baseline_fixed_large-159": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-160": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-161": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-162": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-163": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-164": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-165": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-166": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-167": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-168": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-169": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-170": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-baseline_fixed_large-171": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-172": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-173": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-174": {
+            "cached_blocks": 28,
+            "evicted_blocks": 28
+          },
+          "perf-baseline_fixed_large-175": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-176": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-177": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-178": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-179": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-180": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-181": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-182": {
+            "cached_blocks": 28,
+            "evicted_blocks": 28
+          },
+          "perf-baseline_fixed_large-183": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-184": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-185": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-186": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-187": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-188": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-189": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-190": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-191": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-192": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "perf-baseline_fixed_large-193": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-194": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-195": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_fixed_large-196": {
+            "cached_blocks": 16,
+            "evicted_blocks": 16
+          },
+          "perf-baseline_fixed_large-197": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_fixed_large-198": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-baseline_fixed_large-199": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-61": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-63": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-65": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-67": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-69": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-71": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-73": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-75": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-77": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-79": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-81": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-83": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-85": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-87": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-89": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-91": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-93": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-95": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-97": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-99": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-101": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-103": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-105": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-107": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-109": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-111": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-113": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-115": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-117": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-119": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-121": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-123": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-125": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-127": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-129": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-131": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-133": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-135": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-137": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-139": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-141": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-143": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-145": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-147": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-149": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-151": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-153": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-155": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-157": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-159": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-161": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-163": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-165": {
+            "cached_blocks": 10,
+            "evicted_blocks": 10
+          },
+          "perf-baseline_round_robin-167": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-169": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-171": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-173": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-175": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-177": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-179": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-181": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-183": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-185": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-187": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-189": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-191": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-193": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-195": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-197": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "perf-baseline_round_robin-199": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-62": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-63": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-66": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-67": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-70": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-71": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-74": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-agentmem-75": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-78": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-79": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-82": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-83": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-86": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-87": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-90": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-agentmem-91": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-94": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-agentmem-95": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-98": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-99": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-102": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-agentmem-103": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-106": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-107": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-110": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-agentmem-111": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-114": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-agentmem-115": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-118": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-119": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-122": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-123": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-126": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-agentmem-127": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-130": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-131": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-134": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-135": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-138": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-139": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-142": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-143": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-146": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-agentmem-147": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-150": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-151": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-154": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-155": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-158": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-159": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-162": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-163": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-166": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-167": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-170": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-agentmem-171": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-174": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-175": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-178": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-179": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-182": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-183": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-186": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-187": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-190": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-agentmem-191": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-194": {
+            "cached_blocks": 29,
+            "evicted_blocks": 29
+          },
+          "perf-agentmem-195": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-198": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-agentmem-199": {
+            "cached_blocks": 30,
+            "evicted_blocks": 30
+          },
+          "perf-baseline_round_robin-0": {
+            "cached_blocks": 11,
+            "evicted_blocks": 11
+          },
+          "run_1784867152390_f600a67b": {
+            "cached_blocks": 722,
+            "accessed_blocks": 12848,
+            "evicted_blocks": 722
+          },
+          "run_1784867156819_0e18ddd3": {
+            "cached_blocks": 8,
+            "evicted_blocks": 8
+          },
+          "run_1784867158866_9abd5f67": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "run_1784867162612_7307134f": {
+            "cached_blocks": 7,
+            "evicted_blocks": 7
+          },
+          "run_1784867164287_2b61d574": {
+            "cached_blocks": 7,
+            "evicted_blocks": 7
+          },
+          "event_run_1784867166301_e1d6564b": {
+            "cached_blocks": 92,
+            "accessed_blocks": 304,
+            "evicted_blocks": 92
+          },
+          "event_run_1784867173900_94d3554f": {
+            "cached_blocks": 49,
+            "evicted_blocks": 49
+          },
+          "event_run_1784867180967_d277c723": {
+            "cached_blocks": 41,
+            "evicted_blocks": 41
+          },
+          "event_run_1784867186074_decfdcb8": {
+            "cached_blocks": 48,
+            "evicted_blocks": 48
+          },
+          "event_run_1784867193061_989ae9c4": {
+            "cached_blocks": 49,
+            "evicted_blocks": 49
+          },
+          "run_1784867200917_bca9317f": {
+            "cached_blocks": 419,
+            "accessed_blocks": 7060,
+            "evicted_blocks": 419
+          },
+          "run_1784867249635_bd4fd4b0": {
+            "cached_blocks": 307,
+            "accessed_blocks": 6070,
+            "evicted_blocks": 307
+          },
+          "run_1784867285076_1103ee35": {
+            "cached_blocks": 361,
+            "accessed_blocks": 7034,
+            "evicted_blocks": 361
+          },
+          "run_1784867327884_ae1de79e": {
+            "cached_blocks": 348,
+            "accessed_blocks": 4338,
+            "evicted_blocks": 348
+          },
+          "run_1784867370945_a5c3df7e": {
+            "cached_blocks": 360,
+            "accessed_blocks": 4063,
+            "evicted_blocks": 360
+          },
+          "run_1784867417525_5804b654": {
+            "cached_blocks": 4178,
+            "accessed_blocks": 8908,
+            "evicted_blocks": 4178
+          },
+          "run_1784867488932_e6786a82": {
+            "cached_blocks": 4829,
+            "accessed_blocks": 259,
+            "evicted_blocks": 4829
+          },
+          "run_1784867553997_42297eb6": {
+            "cached_blocks": 4744,
+            "accessed_blocks": 257,
+            "evicted_blocks": 4744
+          },
+          "run_1784867617055_64bc5d26": {
+            "cached_blocks": 4265,
+            "accessed_blocks": 243,
+            "evicted_blocks": 4265
+          },
+          "run_1784867681100_8a1619e5": {
+            "cached_blocks": 4769,
+            "accessed_blocks": 259,
+            "evicted_blocks": 4769
+          },
+          "event_run_1784867749976_76f030da": {
+            "cached_blocks": 4058,
+            "accessed_blocks": 9108,
+            "evicted_blocks": 4058
+          },
+          "event_run_1784867880518_07e81c2e": {
+            "cached_blocks": 4092,
+            "evicted_blocks": 4092,
+            "accessed_blocks": 22
+          },
+          "event_run_1784868015344_63349b32": {
+            "cached_blocks": 3923,
+            "evicted_blocks": 3923,
+            "accessed_blocks": 78
+          },
+          "event_run_1784868142667_e9c7908e": {
+            "cached_blocks": 422,
+            "accessed_blocks": 115,
+            "evicted_blocks": 422
+          },
+          "event_run_1784868206486_9a69ec1f": {
+            "cached_blocks": 4070,
+            "evicted_blocks": 4070,
+            "accessed_blocks": 54
+          },
+          "event_run_1784868351305_316508cc": {
+            "cached_blocks": 4130,
+            "evicted_blocks": 4130
+          },
+          "event_run_1784868460166_38a6357e": {
+            "cached_blocks": 3865,
+            "evicted_blocks": 3865,
+            "accessed_blocks": 41
+          },
+          "event_run_1784868585477_0f7a4bf4": {
+            "cached_blocks": 3837,
+            "evicted_blocks": 3837,
+            "accessed_blocks": 13
+          },
+          "event_run_1784868705045_4780c4b6": {
+            "cached_blocks": 4055,
+            "evicted_blocks": 4055,
+            "accessed_blocks": 22
+          },
+          "run_1784868856553_17b1220f": {
+            "cached_blocks": 858,
+            "accessed_blocks": 2252,
+            "evicted_blocks": 858
+          },
+          "run_1784868880489_2a9c427d": {
+            "cached_blocks": 819,
+            "accessed_blocks": 7519,
+            "evicted_blocks": 819
+          },
+          "run_1784868904639_32fc9a67": {
+            "cached_blocks": 123,
+            "accessed_blocks": 16,
+            "evicted_blocks": 123
+          },
+          "run_1784868925840_d9cf9cb2": {
+            "cached_blocks": 150,
+            "accessed_blocks": 23,
+            "evicted_blocks": 150
+          },
+          "run_1784868950991_17a314dd": {
+            "cached_blocks": 126,
+            "accessed_blocks": 23,
+            "evicted_blocks": 126
+          },
+          "run_1784868973406_4727e5bb": {
+            "cached_blocks": 327,
+            "accessed_blocks": 673,
+            "evicted_blocks": 327
+          },
+          "run_1784868990534_dbc3ab2a": {
+            "cached_blocks": 256,
+            "accessed_blocks": 89,
+            "evicted_blocks": 256
+          },
+          "run_1784869004711_d7f6c99e": {
+            "cached_blocks": 244,
+            "accessed_blocks": 49,
+            "evicted_blocks": 244
+          },
+          "run_1784869018023_cc8bb3ef": {
+            "cached_blocks": 246,
+            "accessed_blocks": 49,
+            "evicted_blocks": 246
+          },
+          "run_1784869031516_96345eb5": {
+            "cached_blocks": 254,
+            "accessed_blocks": 49,
+            "evicted_blocks": 254
+          },
+          "event_run_1784869046648_5fbd5910": {
+            "cached_blocks": 250,
+            "accessed_blocks": 523,
+            "evicted_blocks": 250
+          },
+          "event_run_1784869065369_69a98e66": {
+            "cached_blocks": 220,
+            "accessed_blocks": 85,
+            "evicted_blocks": 220
+          },
+          "event_run_1784869088538_e4a1b416": {
+            "cached_blocks": 196,
+            "evicted_blocks": 196
+          },
+          "event_run_1784869108551_0a21aade": {
+            "cached_blocks": 195,
+            "evicted_blocks": 195
+          },
+          "event_run_1784869128061_6268476b": {
+            "cached_blocks": 184,
+            "evicted_blocks": 184
+          },
+          "branching_baseline": {
+            "cached_blocks": 1920,
+            "accessed_blocks": 13080,
+            "evicted_blocks": 1920
+          },
+          "branching_optimized": {
+            "cached_blocks": 1440,
+            "evicted_blocks": 1440
+          },
+          "prefix_cache_baseline": {
+            "cached_blocks": 2625,
+            "evicted_blocks": 2625
+          },
+          "prefix_cache_optimized": {
+            "cached_blocks": 1271,
+            "accessed_blocks": 1479,
+            "evicted_blocks": 1271
+          },
+          "agentmem_ablation_session": {
+            "cached_blocks": 2772,
+            "accessed_blocks": 929,
+            "evicted_blocks": 2772
+          },
+          "concurrent_agents_c1_a1": {
+            "cached_blocks": 93,
+            "accessed_blocks": 8,
+            "evicted_blocks": 93
+          },
+          "concurrent_agents_c4_a2": {
+            "cached_blocks": 59,
+            "accessed_blocks": 4,
+            "evicted_blocks": 59
+          },
+          "concurrent_agents_c4_a3": {
+            "cached_blocks": 63,
+            "accessed_blocks": 4,
+            "evicted_blocks": 63
+          },
+          "concurrent_agents_c4_a4": {
+            "cached_blocks": 67,
+            "accessed_blocks": 4,
+            "evicted_blocks": 67
+          },
+          "concurrent_agents_c4_a1": {
+            "cached_blocks": 49,
+            "evicted_blocks": 49
+          },
+          "concurrent_agents_c8_a1": {
+            "cached_blocks": 52,
+            "evicted_blocks": 52
+          },
+          "concurrent_agents_c8_a3": {
+            "cached_blocks": 56,
+            "evicted_blocks": 56
+          },
+          "concurrent_agents_c8_a2": {
+            "cached_blocks": 59,
+            "evicted_blocks": 59
+          },
+          "concurrent_agents_c8_a4": {
+            "cached_blocks": 64,
+            "evicted_blocks": 64
+          },
+          "concurrent_agents_c8_a5": {
+            "cached_blocks": 68,
+            "evicted_blocks": 68
+          },
+          "concurrent_agents_c8_a8": {
+            "cached_blocks": 65,
+            "evicted_blocks": 65
+          },
+          "concurrent_agents_c8_a7": {
+            "cached_blocks": 67,
+            "evicted_blocks": 67
+          },
+          "concurrent_agents_c8_a6": {
+            "cached_blocks": 67,
+            "evicted_blocks": 67
+          },
+          "codex-smoke-20260724-001": {
+            "cached_blocks": 18,
+            "accessed_blocks": 1,
+            "evicted_blocks": 18
+          },
+          "event_run_1784883073775_881ce242": {
+            "cached_blocks": 45,
+            "accessed_blocks": 167,
+            "evicted_blocks": 45
+          },
+          "sdk-session-001": {
+            "cached_blocks": 6,
+            "evicted_blocks": 6
+          },
+          "event_run_1784883127767_05119567": {
+            "cached_blocks": 8,
+            "evicted_blocks": 8
+          },
+          "event_run_1784883169430_a4f01602": {
+            "cached_blocks": 40,
+            "accessed_blocks": 1,
+            "evicted_blocks": 40
+          },
+          "event_run_1784883257537_e94accaa": {
+            "cached_blocks": 47,
+            "evicted_blocks": 47
+          },
+          "ttl_priority_session": {
+            "cached_blocks": 4659,
+            "accessed_blocks": 14,
+            "evicted_blocks": 4659
+          },
+          "extractor-healthcheck": {
+            "cached_blocks": 32,
+            "evicted_blocks": 32,
+            "accessed_blocks": 1
+          },
+          "extractor-release": {
+            "cached_blocks": 16218,
+            "accessed_blocks": 2191,
+            "evicted_blocks": 14559
+          },
+          "run_1784887054450_cfd1f066": {
+            "cached_blocks": 728,
+            "accessed_blocks": 3264,
+            "evicted_blocks": 728
+          },
+          "run_1784887060270_f71d3521": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "run_1784887063957_657b2573": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "run_1784887067729_3cd57826": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "run_1784887071433_8d6f6a89": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "event_run_1784887075459_5d186d68": {
+            "cached_blocks": 84,
+            "accessed_blocks": 439,
+            "evicted_blocks": 84
+          },
+          "event_run_1784887113724_71ce9645": {
+            "cached_blocks": 50,
+            "evicted_blocks": 50
+          },
+          "event_run_1784887137297_859c8f88": {
+            "cached_blocks": 48,
+            "evicted_blocks": 48
+          },
+          "event_run_1784887160555_2a7c5f4d": {
+            "cached_blocks": 43,
+            "evicted_blocks": 43
+          },
+          "event_run_1784887198828_2bcd5abf": {
+            "cached_blocks": 49,
+            "evicted_blocks": 49
+          },
+          "run_1784887239642_5b8776fd": {
+            "cached_blocks": 860,
+            "accessed_blocks": 10475,
+            "evicted_blocks": 860
+          },
+          "run_1784887263954_d4f6e9ea": {
+            "cached_blocks": 135,
+            "accessed_blocks": 13,
+            "evicted_blocks": 135
+          },
+          "run_1784887288387_9795a3cb": {
+            "cached_blocks": 128,
+            "accessed_blocks": 12,
+            "evicted_blocks": 128
+          },
+          "run_1784887310815_3c41bc21": {
+            "cached_blocks": 133,
+            "accessed_blocks": 13,
+            "evicted_blocks": 133
+          },
+          "run_1784887334548_8c2401ca": {
+            "cached_blocks": 132,
+            "accessed_blocks": 13,
+            "evicted_blocks": 132
+          },
+          "run_1784887358461_68000f1e": {
+            "cached_blocks": 321,
+            "accessed_blocks": 437,
+            "evicted_blocks": 321
+          },
+          "run_1784887374457_b2378dbb": {
+            "cached_blocks": 288,
+            "accessed_blocks": 189,
+            "evicted_blocks": 288
+          },
+          "run_1784887390710_a9228b26": {
+            "cached_blocks": 248,
+            "accessed_blocks": 49,
+            "evicted_blocks": 248
+          },
+          "run_1784887405220_8bc3e31a": {
+            "cached_blocks": 260,
+            "accessed_blocks": 51,
+            "evicted_blocks": 260
+          },
+          "run_1784887421427_6b5a2793": {
+            "cached_blocks": 253,
+            "accessed_blocks": 51,
+            "evicted_blocks": 253
+          },
+          "event_run_1784887436639_57f04944": {
+            "cached_blocks": 268,
+            "accessed_blocks": 511,
+            "evicted_blocks": 268
+          },
+          "event_run_1784887492115_e1351905": {
+            "cached_blocks": 243,
+            "accessed_blocks": 78,
+            "evicted_blocks": 243
+          },
+          "event_run_1784887549150_47f0804b": {
+            "cached_blocks": 218,
+            "accessed_blocks": 7,
+            "evicted_blocks": 218
+          },
+          "event_run_1784887587942_a1f3b593": {
+            "cached_blocks": 213,
+            "evicted_blocks": 213
+          },
+          "event_run_1784887627593_5126b489": {
+            "cached_blocks": 202,
+            "evicted_blocks": 202
+          },
+          "cache_pressure_session_1": {
+            "cached_blocks": 3468,
+            "accessed_blocks": 38,
+            "evicted_blocks": 3468
+          },
+          "cache_pressure_session_2": {
+            "cached_blocks": 3466,
+            "evicted_blocks": 3466
+          },
+          "cache_pressure_session_3": {
+            "cached_blocks": 3462,
+            "evicted_blocks": 3462
+          },
+          "cache_pressure_session_4": {
+            "cached_blocks": 3464,
+            "evicted_blocks": 3464
+          },
+          "run_1784888818433_d276a8ae": {
+            "cached_blocks": 726,
+            "accessed_blocks": 5675,
+            "evicted_blocks": 726
+          },
+          "event_run_1784888824544_9e8bc7dc": {
+            "cached_blocks": 89,
+            "accessed_blocks": 124,
+            "evicted_blocks": 89
+          },
+          "run_1784889045151_1385ec0b": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "event_run_1784889049833_22ac9740": {
+            "cached_blocks": 86,
+            "accessed_blocks": 390,
+            "evicted_blocks": 86
+          },
+          "run_1784889346181_4d2f2686": {
+            "cached_blocks": 14,
+            "evicted_blocks": 14
+          },
+          "event_run_1784889350655_6537ee1b": {
+            "cached_blocks": 87,
+            "accessed_blocks": 64,
+            "evicted_blocks": 87
+          },
+          "extractor-debug": {
+            "cached_blocks": 178,
+            "evicted_blocks": 178
+          },
+          "run_1784889500162_4ce1bf3e": {
+            "cached_blocks": 9,
+            "evicted_blocks": 9
+          },
+          "event_run_1784889503221_65a1e347": {
+            "cached_blocks": 65,
+            "evicted_blocks": 65
+          },
+          "run_1784889620135_b099a3f8": {
+            "cached_blocks": 18,
+            "accessed_blocks": 12,
+            "evicted_blocks": 18
+          },
+          "run_1784889624839_715fbbb8": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "run_1784889628531_d9e34499": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "run_1784889632337_296044df": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "run_1784889636036_484777b3": {
+            "cached_blocks": 15,
+            "evicted_blocks": 15
+          },
+          "event_run_1784889640070_bb155d61": {
+            "cached_blocks": 81,
+            "accessed_blocks": 64,
+            "evicted_blocks": 81
+          },
+          "event_run_1784889674683_308e7712": {
+            "cached_blocks": 66,
+            "evicted_blocks": 66
+          },
+          "event_run_1784889710810_c2e77374": {
+            "cached_blocks": 66,
+            "evicted_blocks": 66
+          },
+          "event_run_1784889747182_42edd43d": {
+            "cached_blocks": 65,
+            "evicted_blocks": 65
+          },
+          "event_run_1784889778637_487f4567": {
+            "cached_blocks": 66,
+            "evicted_blocks": 66
+          },
+          "run_1784889817392_3c416ed3": {
+            "cached_blocks": 863,
+            "accessed_blocks": 10463,
+            "evicted_blocks": 863
+          },
+          "run_1784889843182_98e44bcf": {
+            "cached_blocks": 132,
+            "accessed_blocks": 14,
+            "evicted_blocks": 132
+          },
+          "run_1784889866818_e0801f62": {
+            "cached_blocks": 137,
+            "accessed_blocks": 15,
+            "evicted_blocks": 137
+          },
+          "run_1784889891443_eac413a2": {
+            "cached_blocks": 122,
+            "accessed_blocks": 15,
+            "evicted_blocks": 122
+          },
+          "run_1784889913906_31f68370": {
+            "cached_blocks": 124,
+            "accessed_blocks": 14,
+            "evicted_blocks": 124
+          },
+          "run_1784889936317_21619f15": {
+            "cached_blocks": 317,
+            "accessed_blocks": 635,
+            "evicted_blocks": 317
+          },
+          "run_1784889951564_cecd768a": {
+            "cached_blocks": 284,
+            "accessed_blocks": 129,
+            "evicted_blocks": 284
+          },
+          "run_1784889969430_c5fff84b": {
+            "cached_blocks": 263,
+            "accessed_blocks": 50,
+            "evicted_blocks": 263
+          },
+          "run_1784889986162_3c9b2246": {
+            "cached_blocks": 253,
+            "accessed_blocks": 49,
+            "evicted_blocks": 253
+          },
+          "run_1784890000754_ee243d84": {
+            "cached_blocks": 264,
+            "accessed_blocks": 49,
+            "evicted_blocks": 264
+          },
+          "event_run_1784890017211_efc41195": {
+            "cached_blocks": 304,
+            "accessed_blocks": 736,
+            "evicted_blocks": 304
+          },
+          "event_run_1784890073984_8f654faf": {
+            "cached_blocks": 261,
+            "evicted_blocks": 261
+          },
+          "event_run_1784890155378_6a1fb8cd": {
+            "cached_blocks": 241,
+            "evicted_blocks": 241
+          },
+          "event_run_1784890243004_71c1fd03": {
+            "cached_blocks": 233,
+            "evicted_blocks": 233
+          },
+          "event_run_1784890322323_f33d4311": {
+            "cached_blocks": 239,
+            "evicted_blocks": 239
+          }
+        },
+        "segments": {
+          "user_message": {
+            "cached_blocks": 10671,
+            "accessed_blocks": 2476,
+            "evicted_blocks": 10671
+          },
+          "__unknown__": {
+            "cached_blocks": 16454,
+            "evicted_blocks": 14795,
+            "accessed_blocks": 2193
+          },
+          "tool_result": {
+            "cached_blocks": 21900,
+            "accessed_blocks": 60780,
+            "evicted_blocks": 21900
+          },
+          "tool_schema": {
+            "cached_blocks": 9623,
+            "accessed_blocks": 3039,
+            "evicted_blocks": 9623
+          },
+          "scratchpad": {
+            "cached_blocks": 49324,
+            "accessed_blocks": 42907,
+            "evicted_blocks": 49324
+          },
+          "assistant_message": {
+            "cached_blocks": 4222,
+            "evicted_blocks": 4222,
+            "accessed_blocks": 8
+          },
+          "shared_prefix": {
+            "cached_blocks": 13911,
+            "accessed_blocks": 15540,
+            "evicted_blocks": 13911
+          },
+          "expired_branch": {
+            "cached_blocks": 3568,
+            "evicted_blocks": 3568
+          }
+        },
+        "eviction_reasons": {
+          "ttl_expired": 11901,
+          "cache_pressure": 47631,
+          "tool_result": 20543,
+          "scratchpad": 47938
+        },
+        "active_blocks_by_session": {
+          "extractor-release": 1659
+        },
+        "active_blocks_by_segment": {
+          "__unknown__": 1659
+        },
+        "stats_path": "/tmp/agentmem-large.json"
+      }
+    }
+  },
+  "cache_total_blocks": 6516,
+  "cache_agent_sessions": 318,
+  "cache_tool_result_blocks": null,
+  "cache_shared_prefix_blocks": null,
+  "cache_scratchpad_blocks": null,
+  "cache_expired_branch_blocks": null,
+  "cache_total_blocks_status": "ok",
+  "cache_agent_sessions_status": "ok",
+  "cache_tool_result_blocks_status": "unavailable",
+  "cache_shared_prefix_blocks_status": "unavailable",
+  "cache_scratchpad_blocks_status": "unavailable",
+  "cache_expired_branch_blocks_status": "unavailable",
+  "cache_total_blocks_reason": "",
+  "cache_agent_sessions_reason": "",
+  "cache_tool_result_blocks_reason": "field_missing",
+  "cache_shared_prefix_blocks_reason": "field_missing",
+  "cache_scratchpad_blocks_reason": "field_missing",
+  "cache_expired_branch_blocks_reason": "field_missing",
+  "agent_meta_enabled": true,
+  "agent_id": "agentmem_branching_config_1784891448"
+}

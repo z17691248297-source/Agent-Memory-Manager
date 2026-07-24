@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import os
-import json
 from pathlib import Path
 from typing import Any
 
+from agentmem.config import ConfigError, load_config, resolve_api_key
 from agentmem.runtime.llm_client import OpenAICompatibleClient
 from agentmem.vllm.agent_meta import AgentMetaBuilder
 
@@ -13,23 +12,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def load_runtime_config(config_path: str | Path | None = None) -> dict[str, Any]:
-    """读取运行配置；只依赖本地 config 文件，不访问网络。"""
-    path = Path(config_path) if config_path else PROJECT_ROOT / "configs" / "config.yaml"
-    if not path.exists():
-        return {"llm": {"backend": "vllm"}}
-    text = path.read_text(encoding="utf-8")
-    try:
-        import yaml  # type: ignore
+    """Read runtime config with environment placeholder expansion.
 
-        data = yaml.safe_load(text) or {}
-        return dict(data)
-    except Exception:
-        try:
-            data = json.loads(text)
-            return dict(data) if isinstance(data, dict) else {}
-        except json.JSONDecodeError:
-            pass
-        return _parse_simple_yaml(text)
+    This function intentionally does not validate required endpoints so
+    read-only commands and tests can inspect config templates without exporting
+    model environment variables. Runtime client construction validates.
+    """
+    return load_config(config_path or PROJECT_ROOT / "configs" / "config.yaml", validate=False)
 
 
 def build_llm_client(config_path: str | Path | None = None):
@@ -45,30 +34,33 @@ def build_llm_client(config_path: str | Path | None = None):
     - AGENTMEM_MODEL
     - AGENTMEM_API_KEY
     """
-    config = load_runtime_config(config_path)
+    # Client construction validates the LLM-facing fields it needs, but does
+    # not require unrelated benchmark/agent defaults. That keeps old minimal
+    # test configs usable while release validation remains strict elsewhere.
+    config = load_config(config_path or PROJECT_ROOT / "configs" / "config.yaml", validate=False)
     llm_config = dict(config.get("llm") or {})
     vllm_config = dict(config.get("vllm") or {})
-    backend = os.getenv("AGENTMEM_LLM_BACKEND", str(llm_config.get("backend", "vllm"))).replace("-", "_").lower()
+    backend = str(llm_config.get("backend", "vllm")).replace("-", "_").lower()
 
     if backend in {"vllm", "openai", "openai_compatible"}:
-        default_base_url = "http://localhost:8000/v1" if backend == "vllm" else "https://api.openai.com/v1"
-        base_url = (
-            os.getenv("AGENTMEM_LLM_BASE_URL")
-            or llm_config.get("base_url")
-            or llm_config.get("vllm_base_url")
-            or default_base_url
-        )
-        model = os.getenv("AGENTMEM_MODEL") or llm_config.get("model") or "Qwen/Qwen2.5-7B-Instruct"
-        api_key = _resolve_api_key(llm_config, backend)
+        base_url = llm_config.get("base_url") or llm_config.get("vllm_base_url")
+        model = llm_config.get("model")
+        if not model:
+            raise ConfigError("llm.model is required")
+        if not _valid_http_url(str(base_url or "")):
+            raise ConfigError("llm.base_url must be a valid http(s) URL")
+        api_key = resolve_api_key(llm_config)
+        if not api_key and backend == "vllm":
+            api_key = "EMPTY"
         enable_agent_meta = (
-            _bool(os.getenv("AGENTMEM_ENABLE_AGENT_META", vllm_config.get("enable_agent_meta", False)))
+            _bool(vllm_config.get("enable_agent_meta", False))
             if backend == "vllm"
             else False
         )
         agent_meta_builder = None
         if enable_agent_meta:
             agent_meta_builder = AgentMetaBuilder(
-                agent_id=str(os.getenv("AGENTMEM_AGENT_ID") or vllm_config.get("agent_id", "agentmem_benchmark")),
+                agent_id=str(vllm_config.get("agent_id", "agentmem_benchmark")),
                 default_ttl=int(vllm_config.get("default_ttl", 300)),
             )
         return OpenAICompatibleClient(
@@ -88,45 +80,16 @@ def build_llm_client(config_path: str | Path | None = None):
     raise ValueError(f"不支持的 llm.backend: {backend}")
 
 
-def _resolve_api_key(llm_config: dict[str, Any], backend: str) -> str:
-    if os.getenv("AGENTMEM_API_KEY"):
-        return str(os.getenv("AGENTMEM_API_KEY"))
-    api_key_env = llm_config.get("api_key_env")
-    if api_key_env and os.getenv(str(api_key_env)):
-        return str(os.getenv(str(api_key_env)))
-    if llm_config.get("api_key"):
-        return str(llm_config["api_key"])
-    return "EMPTY" if backend == "vllm" else ""
-
-
-def _parse_simple_yaml(text: str) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    current_key: str | None = None
-    for raw_line in text.splitlines():
-        line = raw_line.rstrip()
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        if not line.startswith(" ") and line.endswith(":"):
-            current_key = line[:-1].strip()
-            result[current_key] = {}
-            continue
-        if current_key and ":" in line:
-            key, value = line.strip().split(":", 1)
-            result[current_key][key.strip()] = _parse_scalar(value.strip())
-    return result
-
-
-def _parse_scalar(value: str) -> Any:
-    if value.lower() == "true":
-        return True
-    if value.lower() == "false":
-        return False
-    return value
-
-
 def _bool(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
         return value.strip().lower() in {"1", "true", "yes", "on"}
     return bool(value)
+
+
+def _valid_http_url(value: str) -> bool:
+    from urllib.parse import urlparse
+
+    parsed = urlparse(value)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)

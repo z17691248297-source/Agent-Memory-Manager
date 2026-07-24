@@ -74,6 +74,13 @@ class ToolRegistry:
     def available_tools(self) -> list[ToolSpec]:
         return [spec for spec in self._specs.values() if spec.enabled]
 
+    def apply_max_output_chars(self, max_output_chars: int | None) -> None:
+        if max_output_chars is None:
+            return
+        limit = max(1, int(max_output_chars))
+        for spec in self._specs.values():
+            spec.max_output_chars = min(spec.max_output_chars, limit)
+
     def query(self, category: str | None = None, tag: str | None = None) -> list[ToolSpec]:
         specs = self.available_tools()
         if category is not None:
@@ -93,4 +100,3 @@ def _load_simple_yaml(path: Path) -> dict:
     except Exception:
         # fallback：tool.yaml 同时保持 JSON 兼容写法。
         return dict(json.loads(text))
-

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 import types
 import urllib.error
 
@@ -128,8 +129,8 @@ def test_cache_stats_collector_failure_and_missing_fields(monkeypatch) -> None:
     collector = CacheStatsCollector("http://example/cache_stats")
     flattened = collector.flatten({"unexpected": {"shape": True}})
 
-    assert flattened["cache_total_blocks"] == -1
-    assert flattened["cache_tool_result_blocks"] == -1
+    assert flattened["cache_total_blocks"] is None
+    assert flattened["cache_tool_result_blocks"] is None
 
     def raise_url_error(url, timeout=10):
         raise urllib.error.URLError("offline")
@@ -139,3 +140,26 @@ def test_cache_stats_collector_failure_and_missing_fields(monkeypatch) -> None:
 
     assert stats["available"] is False
     assert "offline" in stats["unavailable_reason"]
+
+
+def test_cache_stats_collector_marks_stale_payload_unavailable(monkeypatch) -> None:
+    payload = {"generated_at": time.time() - 3600, "total_blocks": 128}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self) -> bytes:
+            return json.dumps(payload).encode("utf-8")
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda url, timeout=10: FakeResponse())
+    monkeypatch.setenv("AGENTMEM_CACHE_STATS_MAX_AGE_SECONDS", "60")
+    stats = CacheStatsCollector("http://example/cache_stats").fetch()
+
+    assert stats["available"] is False
+    assert stats["cache_total_blocks"] is None
+    assert stats["cache_total_blocks_status"] == "unavailable"
+    assert stats["unavailable_reason"].startswith("stale_cache_stats")

@@ -81,7 +81,11 @@ class OptimizedMemory:
 
         recent_dialogue = "\n".join(f"{m['role']}: {m['content']}" for m in recent_messages)
         tool_summaries = "\n".join(self._tool_prompt_record(result) for result in self.tool_results[-8:])
-        project_rules = "固定说明：保持 system/project/tool brief 前缀稳定；长工具结果使用 result_id 按需引用。"
+        project_rules = (
+            "固定说明：保持 system/project/tool brief 前缀稳定；长工具结果使用 result_id 按需引用。"
+            "如果 tool_summaries 中列出 error_groups、root_cause_candidates 或 required findings，"
+            "最终回答必须逐项覆盖这些关键发现，不得遗漏 OOM、timeout、KV cache 等已出现的问题。"
+        )
         prompt = "\n\n".join(
             [
                 f"[system]\n{self.system_prompt}",

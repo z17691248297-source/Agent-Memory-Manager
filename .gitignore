@@ -8,6 +8,22 @@ venv/
 
 # benchmark 运行产物
 benchmarks/results/
+results/exp_*/
+results/final-release/
+results/final/
+results/*.csv
+results/event_log/
+results/event_memory_snapshots/
+results/tool_store/
+!results/report.md
+!results/LEGACY_DATA_NOTE.md
+!results/final-release-sanitized/
+!results/final-release-sanitized/**
+results_demo_chat/
+
+# generated paper / presentation assets
+AgentMem/
+ppt_assets_agentmem/
 
 web/node_modules/
 web/dist/

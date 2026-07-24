@@ -1,0 +1,13 @@
+ARG OPENEULER_IMAGE=openeuler/openeuler:24.03-lts
+FROM ${OPENEULER_IMAGE}
+
+RUN dnf -y update && dnf -y install python3 python3-pip bash curl git && dnf clean all
+WORKDIR /workspace/agentmem
+COPY . /workspace/agentmem
+RUN python3 -m pip install --no-cache-dir -r requirements.txt && \
+    useradd -m -u 10001 agentmem && \
+    mkdir -p /workspace/agentmem/results && chown -R agentmem:agentmem /workspace/agentmem
+USER agentmem
+ENV PYTHONUNBUFFERED=1
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD python3 -m agentmem --help >/dev/null || exit 1
+ENTRYPOINT ["/workspace/agentmem/docker/entrypoint-agent.sh"]

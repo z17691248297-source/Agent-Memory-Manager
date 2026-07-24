@@ -5,76 +5,97 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+from agentmem.metrics.metric_models import MetricValue, ok, unavailable
+from agentmem.metrics.server_metrics import parse_prometheus_values
 
 DEFAULT_VLLM_METRICS = {
-    "prefix_cache_hit_rate": -1.0,
-    "cached_prompt_tokens": -1.0,
-    "kv_cache_usage": -1.0,
+    "prefix_cache_hit_rate": None,
+    "prefix_cache_hit_rate_status": "unavailable",
+    "prefix_cache_hit_rate_reason": "not_collected",
+    "cached_prompt_tokens": None,
+    "cached_prompt_tokens_status": "unavailable",
+    "cached_prompt_tokens_reason": "not_collected",
+    "kv_cache_usage": None,
+    "kv_cache_usage_status": "unavailable",
+    "kv_cache_usage_reason": "not_collected",
 }
 
 
-def fetch_vllm_metrics(metrics_url: str, timeout: float = 2.0) -> dict[str, float]:
+def fetch_vllm_metrics(metrics_url: str, timeout: float = 2.0) -> dict[str, Any]:
     """Best-effort vLLM Prometheus metrics reader.
 
     vLLM metric names change across releases, so this parser accepts several
-    likely names and falls back to -1 for every field when the endpoint is not
-    reachable or a metric is absent.
+    likely names and uses empty values plus status/reason fields when the
+    endpoint is not reachable or a metric is absent.
     """
+    metrics_url = str(metrics_url or "").strip()
+    if not metrics_url:
+        return _metric_rows(
+            {
+                "prefix_cache_hit_rate": unavailable("model_server", "metrics_url_not_configured", scope="unknown"),
+                "cached_prompt_tokens": unavailable("model_server", "metrics_url_not_configured", scope="unknown"),
+                "kv_cache_usage": unavailable("model_server", "metrics_url_not_configured", scope="unknown"),
+            }
+        )
     try:
         with urllib.request.urlopen(metrics_url, timeout=timeout) as response:
             text = response.read().decode("utf-8", errors="replace")
-    except (OSError, urllib.error.URLError, TimeoutError):
-        return dict(DEFAULT_VLLM_METRICS)
+    except (OSError, urllib.error.URLError, TimeoutError) as exc:
+        return _metric_rows(
+            {
+                "prefix_cache_hit_rate": unavailable(metrics_url, str(exc), scope="global"),
+                "cached_prompt_tokens": unavailable(metrics_url, str(exc), scope="global"),
+                "kv_cache_usage": unavailable(metrics_url, str(exc), scope="global"),
+            }
+        )
 
-    metrics = dict(DEFAULT_VLLM_METRICS)
     values = _parse_prometheus_values(text)
-    metrics["prefix_cache_hit_rate"] = _first_metric(
-        values,
-        [
-            "vllm:prefix_cache_hit_rate",
-            "vllm_prefix_cache_hit_rate",
-            "vllm:gpu_prefix_cache_hit_rate",
-        ],
+    return _metric_rows(
+        {
+            "prefix_cache_hit_rate": _first_metric(
+                values,
+                [
+                    "vllm:prefix_cache_hit_rate",
+                    "vllm_prefix_cache_hit_rate",
+                    "vllm:gpu_prefix_cache_hit_rate",
+                ],
+                metrics_url,
+            ),
+            "cached_prompt_tokens": _first_metric(
+                values,
+                [
+                    "vllm:cached_prompt_tokens_total",
+                    "vllm_cached_prompt_tokens_total",
+                    "vllm:prompt_tokens_cached_total",
+                ],
+                metrics_url,
+            ),
+            "kv_cache_usage": _first_metric(
+                values,
+                [
+                    "vllm:gpu_cache_usage_perc",
+                    "vllm_gpu_cache_usage_perc",
+                    "vllm:kv_cache_usage",
+                ],
+                metrics_url,
+            ),
+        }
     )
-    metrics["cached_prompt_tokens"] = _first_metric(
-        values,
-        [
-            "vllm:cached_prompt_tokens_total",
-            "vllm_cached_prompt_tokens_total",
-            "vllm:prompt_tokens_cached_total",
-        ],
-    )
-    metrics["kv_cache_usage"] = _first_metric(
-        values,
-        [
-            "vllm:gpu_cache_usage_perc",
-            "vllm_gpu_cache_usage_perc",
-            "vllm:kv_cache_usage",
-        ],
-    )
-    return metrics
 
 
 def _parse_prometheus_values(text: str) -> dict[str, float]:
-    values: dict[str, float] = {}
-    for line in text.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        match = re.match(r"^([A-Za-z_:][A-Za-z0-9_:]*)(?:\{[^}]*\})?\s+([-+0-9.eE]+)", line)
-        if not match:
-            continue
-        name, raw_value = match.groups()
-        try:
-            value = float(raw_value)
-        except ValueError:
-            continue
-        values[name] = max(values.get(name, value), value)
-    return values
+    return parse_prometheus_values(text)
 
 
-def _first_metric(values: dict[str, float], names: list[str]) -> float:
+def _first_metric(values: dict[str, float], names: list[str], source: str) -> MetricValue:
     for name in names:
         if name in values:
-            return values[name]
-    return -1.0
+            return ok(values[name], source, scope="global")
+    return unavailable(source, "metric_missing", scope="global")
+
+
+def _metric_rows(metrics: dict[str, MetricValue]) -> dict[str, Any]:
+    row: dict[str, Any] = {}
+    for name, metric in metrics.items():
+        row.update(metric.to_dict(name))
+    return row

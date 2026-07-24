@@ -33,6 +33,11 @@ class EventLog:
     def replay(self, run_id: str) -> list[AgentEvent]:
         return self.list_events(run_id)
 
+    def count(self, run_id: str) -> int:
+        if run_id not in self._events:
+            self._events[run_id] = self.load(run_id)
+        return len(self._events[run_id])
+
     def load(self, run_id: str) -> list[AgentEvent]:
         path = self._path(run_id)
         if not path.exists():

@@ -22,3 +22,8 @@ include = ["agentmem*"]
 pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+  "integration_real: tests requiring a real model server",
+  "gpu: tests requiring GPU metrics",
+  "openeuler: tests requiring native openEuler",
+]

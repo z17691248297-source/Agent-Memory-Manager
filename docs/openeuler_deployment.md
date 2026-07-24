@@ -21,7 +21,7 @@ python3 --version
 nvidia-smi
 ```
 
-如果 `nvidia-smi` 不存在，AgentMem benchmark 不会崩溃，`peak_gpu_memory_mb` 会记录为 `-1`。
+如果 `nvidia-smi` 不存在，AgentMem benchmark 不会崩溃，`peak_gpu_memory_mb` 会记录为 unavailable。
 
 ## 2. 安装 AgentMem
 
@@ -47,22 +47,22 @@ pip install vllm
 
 ```bash
 python -m vllm.entrypoints.openai.api_server \
-  --model /path/to/Qwen2.5-7B-Instruct \
+  --model <served-model-name-or-model-path> \
   --host 0.0.0.0 \
-  --port 8000 \
+  --port <model-port> \
   --enable-prefix-caching
 ```
 
 部分 vLLM 版本可能改用：
 
 ```bash
-vllm serve /path/to/Qwen2.5-7B-Instruct \
+vllm serve <served-model-name-or-model-path> \
   --host 0.0.0.0 \
-  --port 8000 \
+  --port <model-port> \
   --enable-prefix-caching
 ```
 
-如果 `--enable-prefix-caching` 在当前版本不可用，请先移除该参数运行基础 benchmark；此时 `/metrics` 中 prefix cache 字段可能为 `-1`。
+如果 `--enable-prefix-caching` 在当前版本不可用，请先移除该参数运行基础 benchmark；此时 `/metrics` 中 prefix cache 字段可能为 unavailable。
 
 ## 4. 配置 AgentMem
 
@@ -71,9 +71,9 @@ vllm serve /path/to/Qwen2.5-7B-Instruct \
 ```yaml
 llm:
   backend: vllm
-  model: /path/to/Qwen2.5-7B-Instruct
-  base_url: http://127.0.0.1:8000/v1
-  api_key: EMPTY
+  model: <served-model-name>
+  base_url: http://<model-host>:<model-port>/v1
+  api_key_env: AGENTMEM_API_KEY
   temperature: 0
   max_tokens: 512
   timeout: 120
@@ -83,7 +83,7 @@ agent:
   enable_next_action_loop: true
 
 vllm:
-  metrics_url: http://127.0.0.1:8000/metrics
+  metrics_url: http://<model-host>:<model-port>/metrics
   enable_prefix_caching: true
 ```
 
@@ -91,9 +91,9 @@ vllm:
 
 ```yaml
 llm:
-  base_url: http://10.195.21.2:8000/v1
+  base_url: http://<remote-model-host>:<model-port>/v1
 vllm:
-  metrics_url: http://10.195.21.2:8000/metrics
+  metrics_url: http://<remote-model-host>:<model-port>/metrics
 ```
 
 SSH 连接只用于登录和运维，不是 benchmark API 地址。模型服务端口应以实际 vLLM `--port` 为准。
@@ -142,11 +142,11 @@ vLLM backend is unavailable. Please check llm.base_url in configs/config.yaml.
 
 ### nvidia-smi 不存在
 
-AgentMem 会将 `peak_gpu_memory_mb` 写为 `-1`，benchmark 不会崩溃。真实 GPU 性能结论需要在可访问 GPU 指标的机器上运行。
+AgentMem 会将 `peak_gpu_memory_mb` 标记为 unavailable，benchmark 不会崩溃。真实 GPU 性能结论需要在可访问 GPU 指标的机器上运行。
 
 ### /metrics 不可用
 
-AgentMem 会将 `prefix_cache_hit_rate`、`cached_prompt_tokens`、`kv_cache_usage` 写为 `-1`。这不影响主 benchmark，但 prefix cache 结论需要可用 metrics 才完整。
+AgentMem 会将 `prefix_cache_hit_rate`、`cached_prompt_tokens`、`kv_cache_usage` 标记为 unavailable。这不影响主 benchmark，但 prefix cache 结论需要可用 metrics 才完整。
 
 ### 模型路径错误
 
@@ -163,3 +163,14 @@ vLLM 启动阶段通常会报模型路径不存在或 config 加载失败。请�
 - 减小 AgentMem `llm.max_tokens`。
 
 AgentMem 负责 Agent prompt 构造、MemoryPlan 记录和 `agent_meta` 传递，vLLM 服务端根据这些元信息维护 Agent-aware KV cache 统计。
+
+## Verification Flags
+
+AgentMem records separate compatibility flags in `environment.json`:
+
+- `openEuler_userspace_container_verified`: openEuler userspace container run succeeded; host kernel may be non-openEuler.
+- `openEuler_native_host_verified`: native openEuler VM/host run succeeded.
+- `Ubuntu_model_server_verified`: remote Ubuntu GPU model server was verified.
+- `full_openEuler_gpu_deployment_verified`: full Agent plus GPU model server deployment on openEuler was verified.
+
+A Dockerfile or image build alone never sets `official_os_compatibility_run=true` or any native-host/full-GPU flag.

@@ -1,0 +1,42 @@
+{
+  "Ubuntu_model_server_verified": false,
+  "cache_isolation": "snapshot_delta",
+  "config_hash": "2cdca9eebbc0972461465156f4e603ca031617e6e7be0bcd9a610113ea01e5ec",
+  "dataset_hash": "19e909a7f0137e4ce2aede55658713ff18e2d084da9b1268b9c93287fef8a8aa",
+  "end_time": "2026-07-24T11:26:42Z",
+  "experiment_id": "exp_20260724T104018Z_19e878f6",
+  "full_openEuler_gpu_deployment_verified": false,
+  "git_commit": "87a752d",
+  "model": "",
+  "models": [
+    "Qwen2.5-7B-Instruct",
+    "Qwen2.5-1.5B-Instruct"
+  ],
+  "openEuler_native_host_verified": false,
+  "openEuler_userspace_container_verified": false,
+  "order": "counterbalanced",
+  "output_dir": "results/final-codex-live/exp_20260724T104018Z_19e878f6",
+  "real_gpu_metrics": false,
+  "real_model": true,
+  "release": true,
+  "repeat": 5,
+  "scenarios": [
+    "tool-heavy",
+    "multi-stage",
+    "branching",
+    "prefix-cache",
+    "ttl-priority",
+    "cache-pressure",
+    "concurrent-agents"
+  ],
+  "seed": 20260721,
+  "smoke": false,
+  "start_time": "2026-07-24T10:40:19Z",
+  "validation_passed": true,
+  "vllm_version": "",
+  "openEuler_container_attempted": true,
+  "openEuler_container_verified": false,
+  "openEuler_container_blocker": "docker_or_podman_unavailable; sudo blocked by no_new_privileges in current runtime",
+  "docker_available": false,
+  "podman_available": false
+}

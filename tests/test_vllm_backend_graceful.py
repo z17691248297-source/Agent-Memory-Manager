@@ -13,7 +13,7 @@ def test_vllm_backend_unavailable_has_clear_error(tmp_path, capsys, monkeypatch)
                 "  backend: vllm",
                 "  model: missing-test-model",
                 "  base_url: http://127.0.0.1:9/v1",
-                "  api_key: EMPTY",
+                "  api_key_env: AGENTMEM_API_KEY",
                 "  temperature: 0.2",
                 "  max_tokens: 8",
                 "  timeout: 0.2",

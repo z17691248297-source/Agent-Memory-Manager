@@ -32,6 +32,7 @@ class EventSourcedMemoryAdapter:
         snapshot_interval: int = 10,
         max_state_tokens: int = 900,
         mode: str = "event_sourced_memory",
+        run_id: str | None = None,
     ) -> None:
         self.system_prompt = system_prompt
         self.tool_registry = tool_registry
@@ -42,7 +43,7 @@ class EventSourcedMemoryAdapter:
         self.enable_tool_externalization = True
 
         self.session_id = f"session_{uuid4().hex[:12]}"
-        self.run_id = f"event_run_{int(time.time() * 1000)}_{uuid4().hex[:8]}"
+        self.run_id = run_id or f"event_run_{int(time.time() * 1000)}_{uuid4().hex[:8]}"
         self.event_log = EventLog(self.output_dir / "event_log")
         self.projector = MemoryProjector()
         self.renderer = MemoryViewRenderer(max_state_tokens=max_state_tokens)
@@ -60,21 +61,13 @@ class EventSourcedMemoryAdapter:
         self.current_query = ""
         self.last_prompt = ""
         self.memory_delta_count = 0
+        if run_id:
+            self._restore_existing_run()
 
     def start_round(self, round_index: int, stage: str, user_input: str, run_id: str | None = None) -> None:
         self.current_round = int(round_index)
         self.current_stage = stage
         self.current_query = user_input
-
-    def set_task_requirements(
-        self,
-        required_facts: list[str] | None = None,
-        required_answer_points: list[str] | None = None,
-    ) -> None:
-        self.state.required_facts = _dedupe([*self.state.required_facts, *(required_facts or [])])
-        self.state.required_answer_points = _dedupe(
-            [*self.state.required_answer_points, *(required_answer_points or [])]
-        )
 
     def record_tool_call(self, tool_name: str, user_input: str, stage: str) -> None:
         self._append_event(
@@ -116,13 +109,9 @@ class EventSourcedMemoryAdapter:
                 "artifacts": result.artifacts,
             },
         )
-        findings = _required_findings(result.summary, self.state.required_facts)
-        if findings:
-            self.state.tool_key_findings = _dedupe([*self.state.tool_key_findings, *findings])
-
     def add_assistant_message(self, content: str) -> None:
         self.messages.append({"role": "assistant", "content": content})
-        event_type = "final_answer" if self.current_stage == "final_answer" else "reflection"
+        event_type = "final_answer" if self.current_stage == "final_answer" else "assistant_response"
         self._append_event(event_type, content=content, source="assistant")
 
     def record_memory_delta(self, memory_delta: MemoryDelta) -> None:
@@ -164,9 +153,6 @@ class EventSourcedMemoryAdapter:
                 "todos": list(self.state.todos[-10:]),
             },
             "tool_summaries": list(self.state.tool_summaries[-8:]),
-            "required_facts": list(self.state.required_facts),
-            "required_answer_points": list(self.state.required_answer_points),
-            "tool_key_findings": list(self.state.tool_key_findings[-12:]),
             "artifact_refs": artifacts,
             "assistant_response": assistant_response,
             "instruction": "Return JSON only. Generate memory_delta for state update; do not answer the user.",
@@ -179,7 +165,7 @@ class EventSourcedMemoryAdapter:
             "summary_tokens": metrics.get("summary_tokens", 0),
             "state_view_tokens": self.renderer.last_state_view_tokens,
             "latency": metrics.get("latency", 0),
-            "ttft": metrics.get("ttft", -1),
+            "ttft": metrics.get("ttft"),
             "success": metrics.get("success", False),
             "source": "runtime",
         }
@@ -204,7 +190,10 @@ class EventSourcedMemoryAdapter:
         project_rules = (
             "固定说明：使用 Event-Sourced Memory，由 Event Log 投影出通用 Task State；"
             "工具结果只通过 result_id、summary 和 artifact metadata 引用；"
-            "模型回答必须优先输出 JSON：assistant_response、next_action、memory_delta。"
+            "模型回答必须优先输出 JSON：assistant_response、next_action、memory_delta；"
+            "如果工具摘要、artifact summary 或 Task State 中列出 error_groups、root_cause_candidates "
+            "或 required findings，assistant_response 必须逐项覆盖这些关键发现，不得遗漏 OOM、"
+            "timeout、KV cache 等已出现的问题。"
         )
         prompt_parts = [
             f"[system]\n{self.system_prompt}",
@@ -265,12 +254,14 @@ class EventSourcedMemoryAdapter:
         artifacts = "\n".join(
             f"{ref.summary} {ref.result_id} {ref.tool_name} {ref.artifact_type} {ref.path}" for ref in self.state.artifact_refs[:20]
         )
+        tool_summaries = "\n".join(self.state.tool_summaries[:20])
         return "\n".join(
             [
                 "\n".join(self.state.goals),
                 "\n".join(self.state.constraints),
                 facts,
                 decisions,
+                tool_summaries,
                 artifacts,
                 self.last_prompt,
             ]
@@ -278,7 +269,23 @@ class EventSourcedMemoryAdapter:
 
     @property
     def event_count(self) -> int:
-        return len(self.event_log.list_events(self.run_id))
+        return self.event_log.count(self.run_id)
+
+    def _restore_existing_run(self) -> None:
+        events = self.event_log.load(self.run_id)
+        if not events:
+            return
+        self.state = self.snapshot_store.restore(self.run_id, events, self.projector)
+        self.session_id = events[-1].session_id or self.session_id
+        self.current_round = max(int(event.round or 0) for event in events)
+        self.memory_delta_count = sum(event.event_type == "memory_delta" for event in events)
+        self.messages = [
+            message
+            for event in events
+            if (message := _message_from_event(event)) is not None
+        ]
+        for ref in self.state.artifact_refs:
+            self.artifact_manager.register_artifact(ref)
 
     def _append_event(
         self,
@@ -349,12 +356,16 @@ def _dedupe(values: list[str]) -> list[str]:
     return output
 
 
-def _required_findings(summary: str, required_facts: list[str]) -> list[str]:
-    findings: list[str] = []
-    lowered = summary.lower()
-    for fact in required_facts:
-        if str(fact).lower() in lowered:
-            findings.append(f"{fact}: covered by tool summary")
-        else:
-            findings.append(f"missing_required_fact: {fact}")
-    return findings
+def _message_from_event(event: AgentEvent) -> dict | None:
+    if event.event_type == "user_message":
+        return {"role": "user", "content": event.content or ""}
+    if event.event_type == "tool_result":
+        return {
+            "role": "tool",
+            "content": event.content or "",
+            "result_id": str(event.metadata.get("result_id") or ""),
+            "tool_name": str(event.metadata.get("tool_name") or event.source or ""),
+        }
+    if event.event_type in {"assistant_response", "reflection", "final_answer"}:
+        return {"role": "assistant", "content": event.content or ""}
+    return None

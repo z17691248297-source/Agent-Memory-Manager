@@ -32,9 +32,11 @@ def build_agent(
     config_file = Path(config_path) if config_path else root / "configs" / "config.yaml"
     config = load_runtime_config(config_file)
     agent_config = dict(config.get("agent") or {})
+    tools_config = dict(config.get("tools") or {})
     results_root = _resolve_results_dir(root, config, results_dir)
 
     registry = build_default_registry(root / "skills")
+    registry.apply_max_output_chars(tools_config.get("max_output_chars"))
     store = ToolResultStore(results_root / "tool_store", raw_store_max_mb=_raw_store_max_mb(config))
     mode = memory_mode.lower()
     if mode == "baseline":
@@ -62,6 +64,7 @@ def build_agent(
         tool_executor=ToolExecutor(registry, store),
         memory_delta_extractor=build_memory_delta_extractor(config) if mode == "optimized" else None,
         max_steps=int(agent_config.get("max_steps", 3)),
+        max_selected_tools=int(tools_config.get("max_selected_tools", 2)),
         enable_next_action_loop=enable_loop,
         memory_plan_dir=results_root / "memory_plan",
     )

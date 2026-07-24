@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import ast
 import json
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
+from agentmem.config import resolve_api_key
 from agentmem.event_memory.event import AgentEvent
 from agentmem.event_memory.memory_delta import MemoryDelta
 from agentmem.event_memory.memory_delta import MemoryDeltaParser
@@ -84,7 +86,25 @@ class ExternalMemoryDeltaExtractor:
                 temperature=self.config.temperature,
                 max_tokens=self.config.max_tokens,
             )
-            return self._parse_response(str(response.get("content", "")))
+            delta = self._parse_response(str(response.get("content", "")))
+            if not delta.is_empty() and not self.last_error:
+                return delta
+            first_error = self.last_error or "extractor returned empty memory_delta"
+            self.last_error = ""
+            response = self.client.chat(
+                [
+                    {"role": "system", "content": _EXTRACTOR_REPAIR_PROMPT},
+                    {"role": "user", "content": json.dumps(_compact_payload(payload), ensure_ascii=False)},
+                ],
+                temperature=0,
+                max_tokens=min(self.config.max_tokens, 512),
+            )
+            delta = self._parse_response(str(response.get("content", "")))
+            if not delta.is_empty() and not self.last_error:
+                return delta
+            if not self.last_error:
+                self.last_error = first_error
+            return delta
         except Exception as exc:  # noqa: BLE001 - extractor failure must not fail benchmark
             self.last_error = str(exc)
             self._available = False
@@ -132,7 +152,7 @@ def extractor_config_from_runtime(config: dict[str, Any] | None) -> ExtractorCon
     enabled = _bool(os.getenv("AGENTMEM_EXTRACTOR_ENABLED", raw.get("enabled", False)))
     backend = str(os.getenv("AGENTMEM_EXTRACTOR_BACKEND", raw.get("backend", "vllm"))).replace("-", "_").lower()
     base_url = str(os.getenv("AGENTMEM_EXTRACTOR_BASE_URL", raw.get("base_url", "http://localhost:9000/v1")))
-    api_key = str(os.getenv("AGENTMEM_EXTRACTOR_API_KEY", raw.get("api_key", "EMPTY")))
+    api_key = str(os.getenv("AGENTMEM_EXTRACTOR_API_KEY", resolve_api_key(raw)))
     model = str(os.getenv("AGENTMEM_EXTRACTOR_MODEL", raw.get("model", "")))
     return ExtractorConfig(
         enabled=enabled,
@@ -159,11 +179,53 @@ decisions items use content, reason, confidence, source.
 artifact_refs items use result_id, tool_name, artifact_type, path, summary, token_count."""
 _EXTRACTOR_SYSTEM_PROMPT += """
 For Qwen thinking models, do not output a thinking process. Output the final JSON object only.
-If required_facts are provided, inspect tool_summaries, tool_key_findings, artifact_refs, recent_context, and assistant_response.
-If assistant_response conflicts with tool_summaries, tool_key_findings, or artifact_refs, trust the tool evidence.
-For every required_fact supported by those inputs, add a fact with evidence_ref.
-For missing required facts, add warnings entries formatted as missing_required_fact:<fact>.
-Add decisions describing what the final answer must cover."""
+If assistant_response conflicts with tool_summaries or artifact_refs, trust the tool evidence."""
+
+_EXTRACTOR_REPAIR_PROMPT = """Return compact JSON only.
+Output exactly {"memory_delta": {...}}.
+Use only these memory_delta keys: goals, constraints, facts, decisions, open_questions, todos, artifact_refs, tool_summaries, warnings.
+Do not include markdown, code fences, raw logs, nested severity_counts, or explanatory text.
+Keep at most 3 facts, 3 todos, 3 tool_summaries, and 3 artifact_refs.
+Facts must be supported by current_query, tool_summaries, artifact_refs, or assistant_response."""
+
+
+def _compact_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "stage": payload.get("stage", ""),
+        "current_query": _short_text(payload.get("current_query", ""), 500),
+        "assistant_response": _short_text(payload.get("assistant_response", ""), 900),
+        "tool_summaries": [_short_text(item, 900) for item in _as_list(payload.get("tool_summaries"))[:5]],
+        "artifact_refs": _compact_artifact_refs(_as_list(payload.get("artifact_refs"))[:5]),
+    }
+
+
+def _compact_artifact_refs(items: list[Any]) -> list[dict[str, Any]]:
+    output: list[dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        output.append(
+            {
+                "result_id": _short_text(item.get("result_id", ""), 160),
+                "tool_name": _short_text(item.get("tool_name", ""), 80),
+                "artifact_type": _short_text(item.get("artifact_type", ""), 40),
+                "path": _short_text(item.get("path", ""), 240),
+                "summary": _short_text(item.get("summary") or item.get("description", ""), 900),
+                "token_count": item.get("token_count", 0),
+            }
+        )
+    return output
+
+
+def _as_list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
+def _short_text(value: Any, max_chars: int) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars]
 
 
 def _strip_code_fence(text: str) -> str:
@@ -184,7 +246,11 @@ def _load_json_object(text: str) -> dict[str, Any] | None:
         data = json.loads(stripped)
         return data if isinstance(data, dict) else None
     except json.JSONDecodeError:
-        pass
+        try:
+            data = ast.literal_eval(stripped)
+            return data if isinstance(data, dict) else None
+        except (SyntaxError, ValueError, TypeError):
+            pass
 
     decoder = json.JSONDecoder()
     fallback: dict[str, Any] | None = None
@@ -194,7 +260,10 @@ def _load_json_object(text: str) -> dict[str, Any] | None:
         try:
             data, _ = decoder.raw_decode(stripped[index:])
         except json.JSONDecodeError:
-            continue
+            try:
+                data = ast.literal_eval(stripped[index:])
+            except (SyntaxError, ValueError, TypeError):
+                continue
         if not isinstance(data, dict):
             continue
         if "memory_delta" in data:

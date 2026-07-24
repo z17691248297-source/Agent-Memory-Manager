@@ -59,7 +59,9 @@ class LocalDeterministicLLMClient:
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": prompt_tokens + completion_tokens,
-            "tokens_per_second": -1,
+            "tokens_per_second": None,
+            "tokens_per_second_status": "unavailable",
+            "tokens_per_second_reason": "local_deterministic_client",
         }
 
 

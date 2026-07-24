@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-07-24T10:40:19Z",
+  "os_release": "PRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.4 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+  "kernel": "6.6.87.2-microsoft-standard-WSL2",
+  "architecture": "x86_64",
+  "cpu": "x86_64",
+  "memory": [
+    "MemTotal:        7101164 kB",
+    "MemFree:         6212156 kB",
+    "MemAvailable:    6519880 kB",
+    "Buffers:           40308 kB",
+    "Cached:           391124 kB"
+  ],
+  "python_version": "3.12.3",
+  "pip_freeze_hash": "04c3aaaec5d129f1b85c44627591a6878c071d4c2211dd567386d83ff529dafd",
+  "git_commit": "87a752d",
+  "container_runtime": "native_or_unknown",
+  "container_image": "unavailable",
+  "model_endpoint": "http://47.108.145.21/v1",
+  "metrics_endpoint": "http://47.108.145.21/metrics",
+  "vllm_version": "unavailable",
+  "model_name": "Qwen2.5-7B-Instruct",
+  "openEuler_userspace_container_verified": false,
+  "openEuler_native_host_verified": false,
+  "Ubuntu_model_server_verified": false,
+  "full_openEuler_gpu_deployment_verified": false,
+  "official_os_compatibility_run": false,
+  "openEuler_container_attempted": true,
+  "openEuler_container_verified": false,
+  "openEuler_container_blocker": "docker_or_podman_unavailable; sudo blocked by no_new_privileges in current runtime",
+  "docker_available": false,
+  "podman_available": false
+}

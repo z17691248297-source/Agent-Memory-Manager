@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from agentmem.metrics.hardware import collect_hardware_info, collect_os_environment
+from agentmem.metrics.validation import FORMAL_METRICS, validate_results_dir
 from agentmem.runtime.factory import PROJECT_ROOT
 from agentmem.runtime.llm_factory import load_runtime_config
 
@@ -28,7 +29,7 @@ def summarize_results(results_dir: str | Path = "results", config_path: str | Pa
     _write_csv(summary_path, summary, _summary_fields())
 
     report_path = results / "report.md"
-    report_path.write_text(_build_report(config, frames), encoding="utf-8")
+    report_path.write_text(_build_report(config, frames, results), encoding="utf-8")
     return {"summary_csv": summary_path, "report_md": report_path}
 
 
@@ -73,6 +74,7 @@ def _load_frames(results: Path) -> dict[str, Rows]:
             ],
         ),
         "ttl_priority": _concat_existing(results, ["ttl_priority.csv", "final/ttl_priority_on/ttl_priority.csv"]),
+        "concurrent_agents": _read_csv(results / "concurrent_agents.csv"),
     }
 
 
@@ -147,18 +149,18 @@ def _build_summary_rows(results: Path) -> Rows:
                 "agent_id": _first_value(frame, "agent_id", ""),
                 "cache_stats_available": _first_value(frame, "cache_stats_available", ""),
                 "cache_stats_unavailable_reason": _first_value(frame, "cache_stats_unavailable_reason", ""),
-                "cache_total_blocks": _last_numeric(frame, "cache_total_blocks", -1),
-                "cache_agent_sessions": _last_numeric(frame, "cache_agent_sessions", -1),
-                "cache_tool_result_blocks": _last_numeric(frame, "cache_tool_result_blocks", -1),
-                "cache_shared_prefix_blocks": _last_numeric(frame, "cache_shared_prefix_blocks", -1),
-                "cache_scratchpad_blocks": _last_numeric(frame, "cache_scratchpad_blocks", -1),
-                "cache_expired_branch_blocks": _last_numeric(frame, "cache_expired_branch_blocks", -1),
+                "cache_total_blocks": _last_numeric(frame, "cache_total_blocks", ""),
+                "cache_agent_sessions": _last_numeric(frame, "cache_agent_sessions", ""),
+                "cache_tool_result_blocks": _last_numeric(frame, "cache_tool_result_blocks", ""),
+                "cache_shared_prefix_blocks": _last_numeric(frame, "cache_shared_prefix_blocks", ""),
+                "cache_scratchpad_blocks": _last_numeric(frame, "cache_scratchpad_blocks", ""),
+                "cache_expired_branch_blocks": _last_numeric(frame, "cache_expired_branch_blocks", ""),
             }
         )
     return rows
 
 
-def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
+def _build_report(config: dict[str, Any], frames: dict[str, Rows], results_dir: Path) -> str:
     llm = dict(config.get("llm") or {})
     extractor = dict(config.get("extractor") or {})
     memory = dict(config.get("memory") or {})
@@ -177,6 +179,8 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
     modes = sorted(mode for mode in all_modes if mode in preferred_modes) or sorted(all_modes)
     hardware = collect_hardware_info()
     os_environment = collect_os_environment()
+    validation = validate_results_dir(results_dir)
+    all_rows = [row for frame in frames.values() for row in frame]
 
     parts = [
         "# AgentMem Benchmark Report",
@@ -204,6 +208,14 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
         "## 6. Success / Score",
         "",
         _success_score_section(frames),
+        "",
+        "## 实验有效性检查",
+        "",
+        _validation_section(validation),
+        "",
+        "## 正式统计",
+        "",
+        _formal_stats_section(all_rows),
         "",
         "## Configured Model Backend Results",
         "",
@@ -275,11 +287,15 @@ def _build_report(config: dict[str, Any], frames: dict[str, Rows]) -> str:
         "",
         _ablation_section(frames["ablation"]),
         "",
-        "## 13. 指标说明",
+        "## 13. 并发结果",
+        "",
+        _concurrent_agents_section(frames.get("concurrent_agents", [])),
+        "",
+        "## 14. 指标说明",
         "",
         _metrics_notes_section(),
         "",
-        "## 14. 结论",
+        "## 15. 结论",
         "",
         _conclusion(frames),
         "",
@@ -430,7 +446,7 @@ def _backend_results_section(frames: dict[str, Rows], backend: str) -> str:
     for row in grouped:
         group_rows = [item for item in rows if item.get("scenario") == row.get("scenario") and item.get("mode") == row.get("mode")]
         row["success_rate"] = _success_rate(group_rows)
-    note = "说明：本节使用 configs/config.yaml 中配置的模型 backend；latency、TTFT、tokens_per_second 和显存字段用于真实性能分析。cache_stats 不可用时 cache 字段为 -1，并记录 unavailable_reason。agent_meta 不进入 prompt，只通过 OpenAI-compatible extra_body 发送。"
+    note = "说明：本节使用配置文件中的模型 backend。不可用指标显示为 `unavailable`，并通过 *_status/*_reason 字段记录原因；服务级全局 cache 指标不能解释为单 Agent 指标。agent_meta 不进入 prompt，只通过 OpenAI-compatible extra_body 发送。"
     fields = [
         "scenario",
         "mode",
@@ -458,13 +474,40 @@ def _backend_results_section(frames: dict[str, Rows], backend: str) -> str:
 def _metrics_notes_section() -> str:
     return "\n".join(
         [
-            "- vLLM 指标依赖服务端版本和 /v1/agentmem/cache_stats 暴露情况；缺失时报告为 -1，并在 summary/report 中保留 unavailable_reason。",
+            "- vLLM 指标依赖服务端版本、Prometheus /metrics 和 /v1/agentmem/cache_stats 暴露情况；缺失时显示 unavailable，并保留 status/reason。",
             "- 远程 vLLM 主模型服务通过 OpenAI-compatible API 提供推理能力，Agent-aware cache_stats 用于观察服务端 KV block 旁路元信息。",
             "- Event-Sourced Memory 使用主模型按协议输出的 memory_delta；extractor 负责将不稳定输出规整为同一结构化状态更新。",
             "- MemoryPlan JSONL 记录每次 LLM 请求前的 run_id、stage、context_id、segment_type、priority、ttl、included/excluded items 和 agent_meta。",
             "- Agent-aware cache 实验关注 Agent 侧阶段、session、context、priority、ttl 与服务端 cache_stats 的关联观测。",
+            "- P95 使用 inclusive linear interpolation：rank=(n-1)*0.95，在相邻排序样本之间线性插值。",
         ]
     )
+
+
+def _validation_section(validation) -> str:
+    rows = validation.to_dict()["invalid_trials"]
+    status = "PASS" if validation.valid else "INVALID_TRIALS_EXCLUDED"
+    if not rows:
+        return f"- validation_status: {status}\n- invalid_trials: none"
+    return "\n".join(
+        [
+            f"- validation_status: {status}",
+            "- invalid_trials:",
+            _markdown_table(rows, ["file", "row_number", "trial_id", "reason"]),
+        ]
+    )
+
+
+def _formal_stats_section(rows: Rows) -> str:
+    if not rows:
+        return "暂无正式统计数据。"
+    from agentmem.metrics.metric_models import descriptive_stats
+
+    stats = [descriptive_stats(rows, metric) for metric in FORMAL_METRICS if any(metric in row for row in rows)]
+    if not stats:
+        return "暂无正式统计数据。"
+    fields = ["metric", "valid_n", "total_n", "mean", "median", "std", "min", "max", "p50", "p95"]
+    return _markdown_table(stats, fields)
 
 
 def _hardware_section(hardware: dict[str, Any]) -> str:
@@ -768,6 +811,26 @@ def _cache_pressure_section(rows: Rows) -> str:
     )
 
 
+def _concurrent_agents_section(rows: Rows) -> str:
+    if not rows:
+        return "暂无 concurrent-agents 数据。"
+    grouped = _group(rows, ["concurrency"], {
+        "latency": "mean",
+        "ttft": "mean",
+        "tokens_per_second": "mean",
+        "throughput_tasks_per_second": "mean",
+        "peak_gpu_memory_mb": "max",
+        "kv_cache_usage": "mean",
+        "prefix_cache_hit_rate": "mean",
+        "score": "mean",
+    })
+    for row in grouped:
+        group_rows = [item for item in rows if str(item.get("concurrency")) == str(row.get("concurrency"))]
+        row["success_rate"] = _success_rate(group_rows)
+        row["agents"] = len({item.get("agent_meta_session_id") or item.get("session_id") for item in group_rows})
+    return _markdown_table(grouped, ["concurrency", "agents", "latency", "ttft", "throughput_tasks_per_second", "peak_gpu_memory_mb", "kv_cache_usage", "prefix_cache_hit_rate", "success_rate", "score"])
+
+
 def _ttl_priority_section(rows: Rows) -> str:
     if not rows:
         return "暂无 ttl-priority 数据。"
@@ -921,7 +984,7 @@ def _conclusion(frames: dict[str, Rows]) -> str:
     biggest = max(reductions, key=lambda item: item[1]) if reductions else ("暂无", 0.0)
 
     tool_rows = frames["tool_heavy"]
-    max_tool_tokens = _max(tool_rows, "raw_tool_tokens") if tool_rows else 0
+    max_tool_tokens = _max(tool_rows, "raw_tool_tokens") if tool_rows else None
 
     best_variant = "暂无"
     ablation = frames["ablation"]
@@ -931,7 +994,7 @@ def _conclusion(frames: dict[str, Rows]) -> str:
 
     prefix_rows = frames["prefix_cache"]
     has_vllm_metrics = any(
-        _to_float(row.get(column), -1) >= 0
+        _to_float(row.get(column), None) is not None
         for row in prefix_rows
         for column in ["prefix_cache_hit_rate", "cached_prompt_tokens", "kv_cache_usage"]
     )
@@ -945,11 +1008,11 @@ def _conclusion(frames: dict[str, Rows]) -> str:
 
     lines = [
         f"- Token 降低最明显的场景：{biggest[0]}，prompt token reduction 约 {biggest[1]:.2f}%。",
-        f"- 工具上下文膨胀来源：tool-heavy 场景最大 raw_tool_tokens 为 {max_tool_tokens:.0f}。",
+        f"- 工具上下文膨胀来源：tool-heavy 场景最大 raw_tool_tokens 为 {_format_cell(max_tool_tokens)}。",
         f"- 当前报告聚合任务成功率：{overall_success:.2f}%。",
         f"- Ablation 中 prompt_tokens 最低的配置：{best_variant}。",
-        "- 真实 vLLM prefix 指标：已读取到兼容指标。" if has_vllm_metrics else "- 真实 vLLM prefix 指标：当前结果未包含可用兼容指标，相关字段保持 -1。",
-        "- Agent-aware cache_stats：已读取到 /v1/agentmem/cache_stats。" if has_cache_stats else "- Agent-aware cache_stats：当前不可用或未返回目标字段，相关字段保持 -1。",
+        "- 真实 vLLM prefix 指标：已读取到兼容指标。" if has_vllm_metrics else "- 真实 vLLM prefix 指标：当前结果未包含可用兼容指标，相关字段为 unavailable。",
+        "- Agent-aware cache_stats：已读取到 /v1/agentmem/cache_stats。" if has_cache_stats else "- Agent-aware cache_stats：当前不可用或未返回目标字段，相关字段为 unavailable。",
         "- Agent-aware 实验通过 agent_meta 将 session、context、segment、priority 和 ttl 显式传递给 vLLM 服务端，支持长生命周期、多工具、多 session 的 cache 管理观测。",
     ]
     return "\n".join(lines)
@@ -963,10 +1026,14 @@ def _concat_existing(results: Path, names: list[str]) -> Rows:
 
 
 def _read_csv(path: Path) -> Rows:
-    if not path.exists() or path.stat().st_size == 0:
-        return []
-    with path.open("r", encoding="utf-8", newline="") as file:
-        return list(csv.DictReader(file))
+    paths = [path] if path.exists() else sorted(path.parent.glob(f"*_{path.name}"))
+    rows: Rows = []
+    for candidate in paths:
+        if not candidate.exists() or candidate.stat().st_size == 0:
+            continue
+        with candidate.open("r", encoding="utf-8", newline="") as file:
+            rows.extend(csv.DictReader(file))
+    return rows
 
 
 def _write_csv(path: Path, rows: Rows, fieldnames: list[str]) -> None:
@@ -1029,13 +1096,13 @@ def _detect_backend(frames: dict[str, Rows], default: str) -> str:
 def _mean(rows: Rows, column: str) -> float:
     values = [_to_float(row.get(column), None) for row in rows]
     numeric = [value for value in values if value is not None]
-    return sum(numeric) / len(numeric) if numeric else 0.0
+    return sum(numeric) / len(numeric) if numeric else None
 
 
 def _mean_available(rows: Rows, column: str) -> float:
     values = [_to_float(row.get(column), None) for row in rows]
     numeric = [value for value in values if value is not None and value >= 0]
-    return sum(numeric) / len(numeric) if numeric else -1.0
+    return sum(numeric) / len(numeric) if numeric else None
 
 
 def _success_rate(rows: Rows) -> float:
@@ -1048,7 +1115,7 @@ def _success_rate(rows: Rows) -> float:
 def _max(rows: Rows, column: str) -> float:
     values = [_to_float(row.get(column), None) for row in rows]
     numeric = [value for value in values if value is not None]
-    return max(numeric) if numeric else -1.0
+    return max(numeric) if numeric else None
 
 
 def _first_numeric(rows: Rows, column: str) -> float:
@@ -1059,7 +1126,7 @@ def _first_numeric(rows: Rows, column: str) -> float:
     return 0.0
 
 
-def _last_numeric(rows: Rows, column: str, default: float = -1.0) -> float:
+def _last_numeric(rows: Rows, column: str, default: Any = "") -> Any:
     for row in reversed(rows):
         value = _to_float(row.get(column), None)
         if value is not None:
@@ -1090,6 +1157,8 @@ def _mode_reduction(rows: Rows, column: str) -> float | None:
         return None
     baseline = means["baseline"]
     optimized = means["optimized"]
+    if baseline is None or optimized is None:
+        return None
     if baseline <= 0:
         return None
     return (baseline - optimized) / baseline * 100
@@ -1101,6 +1170,8 @@ def _mode_reduction_between(rows: Rows, baseline_mode: str, optimized_mode: str,
         return None
     baseline = means[baseline_mode]
     optimized = means[optimized_mode]
+    if baseline is None or optimized is None:
+        return None
     if baseline <= 0:
         return None
     return (baseline - optimized) / baseline * 100
@@ -1109,6 +1180,8 @@ def _mode_reduction_between(rows: Rows, baseline_mode: str, optimized_mode: str,
 def _mode_delta(rows: Rows, baseline_mode: str, target_mode: str, column: str) -> float | None:
     means = {key[0]: _mean(group, column) for key, group in _group_by(rows, ["mode"]).items()}
     if baseline_mode not in means or target_mode not in means:
+        return None
+    if means[target_mode] is None or means[baseline_mode] is None:
         return None
     return means[target_mode] - means[baseline_mode]
 
@@ -1125,6 +1198,8 @@ def _markdown_table(rows: Rows, columns: list[str]) -> str:
 
 
 def _format_cell(value: Any) -> str:
+    if value in {None, ""}:
+        return "unavailable"
     if isinstance(value, float):
         return f"{value:.4f}"
     return str(value)

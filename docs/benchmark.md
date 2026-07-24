@@ -102,7 +102,7 @@ prefix-cache 额外记录：
 - `cached_prompt_tokens`
 - `kv_cache_usage`
 
-如果 `nvidia-smi` 不可用，`peak_gpu_memory_mb` 为 `-1`。如果 vLLM `/metrics` 不可用，prefix cache 字段为 `-1`。
+如果 `nvidia-smi` 不可用，`peak_gpu_memory_mb` 为 unavailable。如果 vLLM `/metrics` 不可用，prefix cache 字段为 unavailable。
 
 ## Scenarios
 

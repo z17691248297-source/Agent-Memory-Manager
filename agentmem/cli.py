@@ -107,6 +107,7 @@ def build_parser() -> argparse.ArgumentParser:
             "ablation",
             "cache-pressure",
             "ttl-priority",
+            "concurrent-agents",
             "all",
         ],
         default="all",
@@ -131,6 +132,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     benchmark.add_argument("--repeat", type=int, default=None)
     benchmark.add_argument("--sessions", type=int, default=4, help="session count for cache-pressure benchmark")
+    benchmark.add_argument("--max-concurrency", type=int, default=2, help="max concurrency for concurrent-agents benchmark")
     benchmark.add_argument("--agent-id", default=None, help="override generated vLLM agent_meta agent_id")
     benchmark.add_argument("--output", type=Path, default=None)
     benchmark.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
@@ -397,7 +399,10 @@ def benchmark_command(args: argparse.Namespace) -> int:
             config_path=args.config,
             agent_meta_enabled=_agent_meta_arg(args.agent_meta),
             sessions=max(1, int(args.sessions or 1)),
+            max_concurrency=max(1, int(args.max_concurrency or 1)),
             agent_id=args.agent_id,
+            seed=int(benchmark_config.get("seed", 0) or 0),
+            order=str(benchmark_config.get("order", "randomized")),
         )
         result = run_benchmark(options)
     except RuntimeError as exc:

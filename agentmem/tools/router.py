@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 
 from agentmem.tools.spec import ToolSpec
 
@@ -17,7 +18,7 @@ class ToolRouter:
     RULES: dict[str, list[str]] = {
         "log_analyzer": ["日志", "log", "error", "oom", "timeout", "kv cache", "failed"],
         "file_reader": ["读取文件", "读文件", "read file", "file:", "path:", ".txt", ".md", ".py", ".csv", ".log"],
-        "calculator": ["计算", "calculate", "加", "减", "乘", "除", "+", "-", "*", "/"],
+        "calculator": ["计算", "calculate", "加", "减", "乘", "除"],
         "code_analyzer": ["代码", "class", "function", "def", "bug", "todo", "fixme"],
         "csv_analyzer": ["csv", "表格", "统计", "平均值", "列"],
         "repo_scanner": ["仓库", "目录", "repo", "项目结构"],
@@ -47,6 +48,9 @@ class ToolRouter:
                 if keyword.lower() in text:
                     matched.append((available[tool_name], f"命中关键词: {keyword}"))
                     break
+            else:
+                if tool_name == "calculator" and re.search(r"\b\d+(?:\.\d+)?\s*[+\-*/]\s*\d+(?:\.\d+)?\b", text):
+                    matched.append((available[tool_name], "命中数学表达式"))
 
         matched.sort(key=lambda pair: (-pair[0].priority, pair[0].name))
         selected = matched[:top_k]

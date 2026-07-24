@@ -5,17 +5,16 @@ import io
 import re
 from pathlib import Path
 
+from agentmem.tools.path_policy import PROJECT_ROOT, resolve_allowed_path
 
-ALLOWED_ROOT = Path("benchmarks/fixtures").resolve()
+ALLOWED_ROOT = PROJECT_ROOT / "benchmarks" / "fixtures"
 
 
 def analyze_csv(input_text: str, context: dict | None = None) -> str:
     path = _extract_csv_path(input_text)
-    if path and Path(path).exists():
-        target = Path(path).resolve()
-        if not _is_relative_to(target, ALLOWED_ROOT):
-            raise PermissionError("csv_analyzer 只允许读取 benchmarks/fixtures 下的 CSV")
-        text = target.read_text(encoding="utf-8", errors="replace")
+    if path:
+        target = resolve_allowed_path(path, [ALLOWED_ROOT])
+        text = target.read_text(encoding="utf-8", errors="replace") if target.exists() else _mock_csv()
     else:
         text = _mock_csv()
     reader = csv.DictReader(io.StringIO(text))
@@ -55,11 +54,3 @@ def _mock_csv() -> str:
     for idx in range(300):
         lines.append(f"{idx},{80 + idx % 40},{900 + idx % 500},{idx % 7 != 0}")
     return "\n".join(lines)
-
-
-def _is_relative_to(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-        return True
-    except ValueError:
-        return False

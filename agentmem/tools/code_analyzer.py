@@ -3,17 +3,14 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-
-PROJECT_ROOT = Path.cwd().resolve()
+from agentmem.tools.path_policy import PROJECT_ROOT, resolve_allowed_path
 
 
 def analyze_code(input_text: str, context: dict | None = None) -> str:
     path = _extract_python_path(input_text)
-    if path and Path(path).exists():
-        target = Path(path).resolve()
-        if not _is_relative_to(target, PROJECT_ROOT):
-            raise PermissionError("code_analyzer 只允许分析当前项目目录内的 Python 文件")
-        text = target.read_text(encoding="utf-8", errors="replace")
+    if path:
+        target = resolve_allowed_path(path, [PROJECT_ROOT])
+        text = target.read_text(encoding="utf-8", errors="replace") if target.exists() else _mock_code()
     else:
         text = _mock_code()
     classes = re.findall(r"^\s*class\s+(\w+)", text, re.MULTILINE)
@@ -56,11 +53,3 @@ def _mock_code() -> str:
         ]
         * 80
     )
-
-
-def _is_relative_to(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-        return True
-    except ValueError:
-        return False

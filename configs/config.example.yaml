@@ -1,0 +1,71 @@
+llm:
+  backend: ${AGENTMEM_LLM_BACKEND}
+  model: ${AGENTMEM_MODEL}
+  base_url: ${AGENTMEM_LLM_BASE_URL}
+  api_key_env: AGENTMEM_API_KEY
+  temperature: 0
+  max_tokens: 512
+  timeout: 120
+  max_retries: 0
+
+extractor:
+  enabled: ${AGENTMEM_EXTRACTOR_ENABLED}
+  backend: vllm
+  base_url: ${AGENTMEM_EXTRACTOR_BASE_URL}
+  api_key_env: AGENTMEM_EXTRACTOR_API_KEY
+  model: ${AGENTMEM_EXTRACTOR_MODEL}
+  temperature: 0
+  max_tokens: 1024
+  timeout: 120
+  max_retries: 0
+  healthcheck_timeout: 3
+
+agent:
+  max_steps: 3
+  enable_next_action_loop: true
+
+vllm:
+  metrics_url: ${AGENTMEM_VLLM_METRICS_URL}
+  cache_stats_url: ${AGENTMEM_CACHE_STATS_URL}
+  cache_reset_url: ${AGENTMEM_CACHE_RESET_URL}
+  enable_prefix_caching: true
+  enable_agent_meta: true
+  agent_id: agentmem_benchmark
+  default_ttl: 300
+  cache_stats_timeout: 10
+  same_host_gpu: false
+
+cache_isolation:
+  strategy: snapshot_delta
+  allow_contaminated: false
+
+memory:
+  recent_rounds: 6
+  enable_tool_externalization: true
+  enable_skill_lazy_loading: true
+  enable_history_summary: true
+  enable_branch_sharing: true
+  enable_stable_prefix: true
+
+tools:
+  enabled:
+    - log_analyzer
+    - file_reader
+    - calculator
+    - code_analyzer
+    - csv_analyzer
+    - repo_scanner
+  max_selected_tools: 2
+  max_output_chars: 20000
+
+benchmark:
+  output_dir: ${AGENTMEM_OUTPUT_DIR}
+  repeat: 1
+  warmup: 0
+  seed: ${AGENTMEM_SEED}
+  order: randomized
+  scenarios:
+    - tool-heavy
+  models:
+    - default
+  release: false

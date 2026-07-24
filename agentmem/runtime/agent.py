@@ -28,6 +28,7 @@ class AgentRuntime:
         tool_router: ToolRouter | None = None,
         memory_delta_extractor=None,
         max_steps: int = 1,
+        max_selected_tools: int = 2,
         enable_next_action_loop: bool = False,
         memory_plan_dir: str | Path | None = None,
     ) -> None:
@@ -40,6 +41,7 @@ class AgentRuntime:
         self.memory_delta_parser = MemoryDeltaParser()
         self.memory_delta_extractor = memory_delta_extractor
         self.max_steps = max(1, int(max_steps or 1))
+        self.max_selected_tools = max(1, int(max_selected_tools or 1))
         self.enable_next_action_loop = bool(enable_next_action_loop)
         self.run_id = _memory_session_id(self.memory) or _new_run_id()
         self.memory_plan_logger = MemoryPlanLogger(memory_plan_dir) if memory_plan_dir else None
@@ -51,18 +53,18 @@ class AgentRuntime:
         run_id = session_run_id
         if hasattr(self.memory, "start_round"):
             self.memory.start_round(self.round, stage, user_input, run_id=run_id)
-        if hasattr(self.memory, "set_task_requirements"):
-            self.memory.set_task_requirements(
-                required_facts=tool_context.get("required_facts") or [],
-                required_answer_points=tool_context.get("required_answer_points") or [],
-            )
         self.memory.add_user_message(user_input)
 
-        decision = self.tool_router.route(user_input, stage, self.tools.available_tools())
+        decision = self.tool_router.route(
+            user_input,
+            stage,
+            self.tools.available_tools(),
+            top_k=self.max_selected_tools,
+        )
         selected_tools = list(decision.selected_tool_names)
         tool_results = []
         prompt_tokens = output_tokens = total_tokens = 0
-        latency = ttft = tokens_per_second = 0.0
+        latency = ttft = 0.0
         assistant_response = ""
         last_agent_meta: dict = {}
         completion_reached = False
@@ -73,21 +75,24 @@ class AgentRuntime:
         extractor_failure_count = 0
         step_index = 0
 
-        def apply_extractor(assistant_text: str) -> None:
+        def apply_extractor(assistant_text: str) -> bool:
             nonlocal extractor_calls, extractor_error, extractor_success_count, extractor_failure_count
-            memory_delta = self._extract_memory_delta(user_input, stage, assistant_text)
             if self.memory_delta_extractor is None:
-                return
+                return False
+            if not assistant_text.strip():
+                return False
+            memory_delta = self._extract_memory_delta(user_input, stage, assistant_text)
             extractor_calls += 1
             call_error = str(getattr(self.memory_delta_extractor, "last_error", "") or "")
             if call_error:
                 extractor_error = call_error
             if memory_delta.is_empty() or call_error:
                 extractor_failure_count += 1
-                return
+                return False
             extractor_success_count += 1
             if hasattr(self.memory, "record_memory_delta"):
                 self.memory.record_memory_delta(memory_delta)
+            return True
 
         if self.tool_executor and selected_tools and not self.enable_next_action_loop:
             for tool_name in selected_tools:
@@ -148,9 +153,8 @@ class AgentRuntime:
             if response.get("agent_meta_sent"):
                 last_agent_meta = dict(response.get("agent_meta") or {})
             if step_index == 1:
-                ttft = float(response.get("ttft", -1) or -1)
-            tokens_per_second = float(response.get("tokens_per_second", -1) or -1)
-
+                raw_ttft = response.get("ttft")
+                ttft = None if raw_ttft in {None, ""} else float(raw_ttft)
             parsed = self.memory_delta_parser.parse(response.get("content", ""))
             assistant_response = parsed.assistant_response
             next_action = parsed.next_action or {}
@@ -173,16 +177,16 @@ class AgentRuntime:
 
             self.memory.add_assistant_message(assistant_response)
             memory_delta = parsed.memory_delta
+            should_extract = not (
+                self.enable_next_action_loop
+                and stage == "tool_calling"
+                and selected_tools
+                and not tool_results
+            )
+            extractor_recorded_delta = apply_extractor(assistant_response) if should_extract else False
             if memory_delta.is_empty():
-                should_extract = not (
-                    self.enable_next_action_loop
-                    and stage == "tool_calling"
-                    and selected_tools
-                    and not tool_results
-                )
-                if should_extract:
-                    apply_extractor(assistant_response)
-            elif hasattr(self.memory, "record_memory_delta"):
+                pass
+            elif not extractor_recorded_delta and hasattr(self.memory, "record_memory_delta"):
                 self.memory.record_memory_delta(memory_delta)
 
             if not self.enable_next_action_loop or _is_final_action(next_action):
@@ -230,6 +234,8 @@ class AgentRuntime:
         structural_success = bool(assistant_response.strip()) and not llm_error and all(
             result.status not in {"failed", "timeout", "permission_denied"} for result in tool_results
         )
+        tool_latency = sum(result.latency for result in tool_results)
+        tokens_per_second = output_tokens / latency if latency > 0 else None
 
         metrics = {
             "run_id": run_id,
@@ -254,12 +260,23 @@ class AgentRuntime:
             "raw_tool_tokens": round_raw_tool_tokens,
             "injected_tool_tokens": round_injected_tool_tokens,
             "tool_compression_ratio": round_tool_compression_ratio,
-            "latency": latency + sum(result.latency for result in tool_results),
+            "latency": latency + tool_latency,
+            "total_latency": latency + tool_latency,
+            "model_request_latency": latency,
+            "llm_latency": latency,
+            "tool_latency": tool_latency,
+            "tool_execution_latency": tool_latency,
             "ttft": ttft,
+            "ttft_status": "ok" if ttft is not None else "unavailable",
+            "ttft_reason": "" if ttft is not None else "not_reported_by_client",
             "output_tokens": output_tokens,
             "total_tokens": total_tokens or (prompt_tokens + output_tokens),
             "tokens_per_second": tokens_per_second,
+            "tokens_per_second_status": "ok" if tokens_per_second is not None else "unavailable",
+            "tokens_per_second_reason": "" if tokens_per_second is not None else "zero_or_unavailable_model_latency",
             "peak_gpu_memory_mb": get_peak_gpu_memory_mb(),
+            "peak_gpu_memory_mb_status": "unavailable",
+            "peak_gpu_memory_mb_reason": "local_gpu_disabled_use_model_server_metrics",
             "success": structural_success,
             "agent_steps": max_llm_steps if not completion_reached else min(max_llm_steps, step_index),
             "llm_error": llm_error,

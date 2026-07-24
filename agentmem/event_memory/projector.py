@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from typing import Iterable
 
@@ -24,14 +25,14 @@ class MemoryProjector:
             if artifact:
                 next_state.artifact_refs.append(artifact)
             if event.content:
-                next_state.tool_summaries.append(_compact(event.content))
-            next_state.recent_context.append(_recent_line(f"tool:{event.source}", event.content))
+                next_state.tool_summaries.append(_tool_summary(event.content))
+            next_state.recent_context.append(_recent_line(f"tool:{event.source}", _tool_summary(event.content)))
         elif event.event_type == "memory_delta":
             _apply_delta(next_state, MemoryDelta.from_dict(event.metadata.get("memory_delta") or {}))
         elif event.event_type == "final_answer":
             next_state.final_answer = _compact(event.content or "", max_chars=1200)
             next_state.recent_context.append(_recent_line("assistant", event.content))
-        elif event.event_type in {"reflection", "agent_plan", "decision", "observation"}:
+        elif event.event_type in {"assistant_response", "reflection", "agent_plan", "decision", "observation"}:
             next_state.recent_context.append(_recent_line(event.source or "assistant", event.content))
 
         next_state.last_updated_round = max(next_state.last_updated_round, int(event.round or 0))
@@ -110,6 +111,46 @@ def _stage_state(state: TaskStateView, stage: str) -> dict:
 
 def _recent_line(role: str, content: str | None) -> str:
     return f"{role}: {_compact(content or '')}"
+
+
+def _tool_summary(content: str | None) -> str:
+    text = str(content or "")
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return _compact(text)
+    if not isinstance(data, dict):
+        return _compact(text)
+    parts: list[str] = []
+    severity_counts = data.get("severity_counts")
+    if isinstance(severity_counts, dict):
+        parts.append(f"severity_counts={severity_counts}")
+    groups = data.get("error_groups")
+    if isinstance(groups, list):
+        group_parts = []
+        for group in groups[:8]:
+            if not isinstance(group, dict):
+                continue
+            group_parts.append(
+                " ".join(
+                    item
+                    for item in [
+                        f"signature={group.get('signature', '')}",
+                        f"count={group.get('count', '')}",
+                        f"severity={group.get('severity', '')}",
+                        f"keywords={group.get('keywords', '')}",
+                    ]
+                    if item.strip()
+                )
+            )
+        if group_parts:
+            parts.append("error_groups=[" + "; ".join(group_parts) + "]")
+    candidates = data.get("root_cause_candidates")
+    if isinstance(candidates, list) and candidates:
+        parts.append("root_cause_candidates=[" + "; ".join(str(item) for item in candidates[:8]) + "]")
+    if parts:
+        return _compact("; ".join(parts), max_chars=900)
+    return _compact(text)
 
 
 def _compact(text: str, max_chars: int = 500) -> str:
