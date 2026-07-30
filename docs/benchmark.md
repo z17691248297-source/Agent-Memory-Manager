@@ -210,7 +210,7 @@ python -m agentmem report
 - 项目目标
 - 系统架构
 - Event-Sourced Memory 机制说明
-- extractor backend/model/base_url
+- configured model backend/model/base_url
 - client OS / client environment / model server OS
 - Benchmark 数据和任务说明
 - baseline vs optimized 对比

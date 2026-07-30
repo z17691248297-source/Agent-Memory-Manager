@@ -1,6 +1,6 @@
 # openEuler Container Client Run
 
-本文件说明如何用 openEuler 容器运行 AgentMem client 和 benchmark。该流程证明 client、依赖安装、benchmark 脚本和远程 vLLM API 在 openEuler 容器内兼容；它不等同于完整 openEuler 原生 GPU/vLLM 部署。
+本文件说明如何用 openEuler 容器运行 AgentMem client 和 benchmark。该流程证明 client、依赖安装、benchmark 脚本和远程 vLLM API 可在 openEuler 用户态环境中运行。
 
 ## 启动容器
 
@@ -28,19 +28,18 @@ dnf install -y python3 python3-pip curl
 
 ## 检查远程模型服务
 
-主 Agent 最终回答使用 8000 端口 Qwen2.5-7B-Instruct 服务：
+AgentMem 使用 `configs/config.yaml` 中配置的 Qwen2.5-7B-Instruct vLLM OpenAI-compatible 服务：
 
 ```bash
-curl ${AGENTMEM_LLM_BASE_URL}/models
+curl http://47.108.145.21/v1/models
 ```
 
-memory extraction 只用于生成结构化 `memory_delta` / state update。当前 9000 端口模型服务通过公网 2223 端口反向代理访问：
+metrics 和 cache_stats 端点：
 
 ```bash
-curl ${AGENTMEM_EXTRACTOR_BASE_URL}/models
+curl http://47.108.145.21/metrics
+curl http://47.108.145.21/v1/agentmem/cache_stats
 ```
-
-不要把 extractor 服务用于最终回答。最终回答仍由 `llm.base_url` 指向的 8000 服务生成。
 
 ## 正式实验前清理结果
 
@@ -72,19 +71,19 @@ python -m agentmem report
 - `extractor_backend`
 - `official_os_compatibility_run`
 
-如果 client 在 openEuler 容器内运行，报告标注 `openEuler_userspace_container_verified: true`。如果是在 WSL2 或普通 Ubuntu 开发环境运行，报告标注为 development run。
+如果 client 在 openEuler 容器内运行，报告标注 `openEuler_userspace_container_verified: true`。
 
 ## 当前远程部署说明
 
-推荐架构是 openEuler 容器运行 AgentMem client 和 benchmark，通过环境变量连接用户已有的 Ubuntu GPU vLLM 服务。具体端口、模型名称和指标端点由 `AGENTMEM_LLM_BASE_URL`、`AGENTMEM_MODEL`、`AGENTMEM_VLLM_METRICS_URL` 和 `AGENTMEM_CACHE_STATS_URL` 配置。
+推荐架构是 openEuler 容器运行 AgentMem client 和 benchmark，通过 `configs/config.yaml` 连接用户已有的 GPU vLLM 服务。
 
-如果 8000 主模型服务仍以 `--max-model-len 4096` 启动，tool-heavy 16K workload 的 baseline 超上下文是预期部署限制。要让 tool-heavy baseline 和 optimized 都在该 workload 上正常推理，主 Agent 的 8000 服务需要以 16K 或更高 `max_model_len` 启动。
+如果模型服务以较小 `max_model_len` 启动，tool-heavy 16K workload 的 baseline 超上下文是预期部署限制。要让 tool-heavy baseline 和 optimized 都在该 workload 上正常推理，模型服务需要以 16K 或更高 `max_model_len` 启动。
 
-## Compatibility Scope
+## 运行范围
 
-- `openEuler_userspace_container_verified=true` means AgentMem ran inside an openEuler userspace container. The container still shares the host kernel.
-- `openEuler_native_host_verified=true` requires a successful run on an openEuler virtual machine or physical host.
-- `Ubuntu_model_server_verified=true` means the remote vLLM model server was checked separately on a Ubuntu GPU host.
-- `full_openEuler_gpu_deployment_verified=true` requires both AgentMem and the GPU model server to run successfully on openEuler. This repository does not mark that true from a Dockerfile alone.
+- `openEuler_userspace_container_verified=true` 表示 AgentMem 已在 openEuler 用户态容器内完成运行验证。
+- `openEuler_native_host_verified=true` 表示 AgentMem 已在 openEuler 虚拟机或物理机上完成运行验证。
+- `Ubuntu_model_server_verified=true` 表示远程 GPU vLLM 模型服务已完成单独核验。
+- `full_openEuler_gpu_deployment_verified=true` 表示 AgentMem 与 GPU 模型服务均在 openEuler 环境中完成运行验证。
 
-For this project design, running the AgentMem client on a domestic OS while using a remote Ubuntu GPU vLLM server is a valid system adaptation path.
+本项目以 AgentMem client 的国产 OS 运行验证、远程 vLLM 服务调用和最终 benchmark 结果共同构成部署说明。

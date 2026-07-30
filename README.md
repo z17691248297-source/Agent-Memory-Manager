@@ -16,7 +16,7 @@ AgentMem optimized 的核心是 Event-Sourced Agent Memory：
 4. Prompt 不再拼接完整长历史，而是渲染 Task State View、Artifact References、Recent Context 和 Current Query。
 5. 工具结果以 artifact/result_id 形式外置保存到 `results/tool_store/`。
 6. Stable Renderer 保证 prompt 结构稳定，为 vLLM prefix cache 复用创造条件。
-7. History Summary 只作为对照组或 fallback，不再作为 optimized 的核心解释。
+7. History Summary 只作为对照组，不作为 optimized 的核心解释。
 
 ## 安装
 
@@ -34,19 +34,27 @@ pip install -r requirements.txt
 ```yaml
 llm:
   backend: vllm
-  model: <served-model-name>
-  base_url: http://<model-host>:<model-port>/v1
-  api_key_env: AGENTMEM_API_KEY
+  model: Qwen2.5-7B-Instruct
+  base_url: http://47.108.145.21/v1
+  api_key: EMPTY
   temperature: 0
   max_tokens: 512
-  timeout: 120
+  timeout: 180
+
+extractor:
+  enabled: true
+  backend: vllm
+  model: Qwen2.5-7B-Instruct
+  base_url: http://47.108.145.21/v1
+  api_key: EMPTY
 
 agent:
   max_steps: 3
   enable_next_action_loop: true
 
 vllm:
-  metrics_url: http://<model-host>:<model-port>/metrics
+  metrics_url: http://47.108.145.21/metrics
+  cache_stats_url: http://47.108.145.21/v1/agentmem/cache_stats
 ```
 
 `backend=vllm` 使用 OpenAI-compatible Chat Completions API，并通过 streaming 记录 TTFT。
@@ -123,7 +131,7 @@ CSV 会记录：
 
 部署说明见 [docs/openeuler_deployment.md](docs/openeuler_deployment.md)。AgentMem 客户端可在 openEuler 用户态容器中运行，并通过 OpenAI-compatible API 连接远程 vLLM 模型服务；GPU 模型服务可以独立部署在模型节点上。
 
-最小国产 OS 兼容性验证：
+最小国产 OS 运行验证：
 
 ```bash
 DOCKER_CMD='sudo docker' bash scripts/run_openeuler_smoke.sh

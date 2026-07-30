@@ -11,7 +11,7 @@ AgentMem 是通用轻量 Agent Runtime + Memory Manager。它用于复现和评�
 - `AgentRuntime`：执行多轮输入、轻量 next_action loop、工具调用、LLM 调用和指标采集。
 - `ToolExecutor` + `ToolResultStore`：执行工具，保存 raw output、chunk、index 和 artifact metadata。
 - `EventSourcedMemoryAdapter`：optimized memory backend，记录事件并投影 Task State View。
-- `MemoryDeltaParser`：解析模型输出协议，非法 JSON fallback 为普通 assistant response。
+- `MemoryDeltaParser`：解析模型输出协议，非法 JSON 按普通 assistant response 处理。
 - `MemoryProjector` + `StateReducer`：将 memory_delta、tool_result artifact 和用户上下文合并为通用状态视图。
 - `MemoryViewRenderer`：稳定渲染 Task State View、Artifact References、Recent Context 和 Current Query。
 - `Evaluator`：读取 benchmark task 的显式规则，评估 success、score 和 failure reason。

@@ -143,7 +143,7 @@ DOCKER_CMD='sudo docker' bash scripts/run_openeuler_smoke.sh
 - `validation.json` 中 `valid` 为 `true`。
 - `report.md` 中能看到真实 vLLM backend、模型名、`tool-heavy` 结果。
 
-说明：该 smoke 只作为国产 OS 兼容性证据；完整性能对比仍使用统一最终 release benchmark 结果。由于 AgentMem 客户端不直接执行 GPU 推理，openEuler 容器 smoke 不作为显存或吞吐性能对比口径。
+说明：该 smoke 作为国产 OS 运行证据；完整性能对比仍使用统一最终 release benchmark 结果。由于 AgentMem 客户端不直接执行 GPU 推理，openEuler 容器 smoke 不作为显存或吞吐性能对比口径。
 
 ## 6. 运行 Benchmark
 
@@ -230,13 +230,13 @@ vLLM 启动阶段通常会报模型路径不存在或 config 加载失败。请�
 
 AgentMem 负责 Agent prompt 构造、MemoryPlan 记录和 `agent_meta` 传递，vLLM 服务端根据这些元信息维护 Agent-aware KV cache 统计。
 
-## Verification Flags
+## 运行标记
 
-AgentMem records separate compatibility flags in `environment.json`:
+AgentMem 在 `environment.json` 中记录运行标记：
 
-- `openEuler_userspace_container_verified`: openEuler userspace container run succeeded; host kernel may be non-openEuler.
-- `openEuler_native_host_verified`: native openEuler VM/host run succeeded.
-- `Ubuntu_model_server_verified`: remote Ubuntu GPU model server was verified.
-- `full_openEuler_gpu_deployment_verified`: full Agent plus GPU model server deployment on openEuler was verified.
+- `openEuler_userspace_container_verified`: openEuler 用户态容器运行成功。
+- `openEuler_native_host_verified`: openEuler 虚拟机或物理机运行成功。
+- `Ubuntu_model_server_verified`: 远程 Ubuntu GPU 模型服务完成核验。
+- `full_openEuler_gpu_deployment_verified`: AgentMem 与 GPU 模型服务均在 openEuler 环境中运行成功。
 
-A Dockerfile or image build alone never sets `official_os_compatibility_run=true` or any native-host/full-GPU flag.
+仅构建 Dockerfile 或镜像不会设置 native-host/full-GPU 运行标记。

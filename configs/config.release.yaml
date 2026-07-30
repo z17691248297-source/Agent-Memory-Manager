@@ -1,19 +1,19 @@
 llm:
   backend: vllm
-  model: ${AGENTMEM_MODEL}
-  base_url: ${AGENTMEM_LLM_BASE_URL}
-  api_key_env: AGENTMEM_API_KEY
+  model: Qwen2.5-7B-Instruct
+  base_url: http://47.108.145.21/v1
+  api_key: EMPTY
   temperature: 0
   max_tokens: 512
   timeout: 180
   max_retries: 0
 
 extractor:
-  enabled: ${AGENTMEM_EXTRACTOR_ENABLED}
+  enabled: true
   backend: vllm
-  base_url: ${AGENTMEM_EXTRACTOR_BASE_URL}
-  api_key_env: AGENTMEM_EXTRACTOR_API_KEY
-  model: ${AGENTMEM_EXTRACTOR_MODEL}
+  base_url: http://47.108.145.21/v1
+  api_key: EMPTY
+  model: Qwen2.5-7B-Instruct
   temperature: 0
   max_tokens: 1024
   timeout: 120
@@ -34,8 +34,8 @@ agent:
   enable_next_action_loop: true
 
 vllm:
-  metrics_url: ${AGENTMEM_VLLM_METRICS_URL}
-  cache_stats_url: ${AGENTMEM_CACHE_STATS_URL}
+  metrics_url: http://47.108.145.21/metrics
+  cache_stats_url: http://47.108.145.21/v1/agentmem/cache_stats
   enable_prefix_caching: true
   enable_agent_meta: true
   agent_id: agentmem_release
